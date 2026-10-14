@@ -72,10 +72,12 @@ app.post('/api/photo-checkout',async(req,res)=>{
  if(!paymentReady())return res.status(503).json({error:'checkout_not_configured'});
  const count=Number(req.body?.count),method=req.body?.deliveryMethod;
  const contact=typeof req.body?.contact==='string'?req.body.contact.trim():'';
+ const details=typeof req.body?.details==='string'?req.body.details.trim():'';
+ if(details.length<3||details.length>1000)return res.status(400).json({error:'invalid_photo_details'});
  if(!photoPrices[count]||!['email','whatsapp'].includes(method)||contact.length>254||(method==='email'?!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact):!/^[+\d ()-]+$/.test(contact)||contact.replace(/\D/g,'').length<7||contact.replace(/\D/g,'').length>15))return res.status(400).json({error:'invalid_photo_order'});
  let id;
  try{
-  const result=await pool.query('INSERT INTO lussan_booking.photo_orders(package_count,amount_cents,delivery_method,delivery_contact) VALUES($1,$2,$3,$4) RETURNING id',[count,photoPrices[count],method,contact]);id=result.rows[0].id;
+  const result=await pool.query('INSERT INTO lussan_booking.photo_orders(package_count,amount_cents,delivery_method,delivery_contact,request_details) VALUES($1,$2,$3,$4,$5) RETURNING id',[count,photoPrices[count],method,contact,details]);id=result.rows[0].id;
   const session=await stripe.checkout.sessions.create({mode:'payment',client_reference_id:id,
    metadata:{project:'lussan',order_type:'photos',package_count:String(count),delivery_method:method,delivery_contact:contact},
    ...(method==='email'?{customer_email:contact}:{}),
@@ -137,9 +139,9 @@ app.get('/api/payment-status',async(req,res)=>{
   if(session.livemode!==liveEnabled)return res.status(400).json({verified:false});
   if(session.payment_status!=='paid')return res.json({verified:false,status:'pending'});
   if(session.metadata?.project==='lussan'&&session.metadata?.order_type==='photos'){
-   const result=await pool.query('SELECT status,package_count,delivery_method,delivery_contact,delivery_due_at,amount_cents FROM lussan_booking.photo_orders WHERE stripe_checkout_session_id=$1 AND id=$2',[id,session.client_reference_id]);
+   const result=await pool.query('SELECT status,package_count,delivery_method,delivery_contact,request_details,delivery_due_at,amount_cents FROM lussan_booking.photo_orders WHERE stripe_checkout_session_id=$1 AND id=$2',[id,session.client_reference_id]);
    if(!result.rowCount)return res.status(404).json({verified:false});const order=result.rows[0];
-   return res.json({kind:'photos',verified:['confirmed','delivered'].includes(order.status)&&order.amount_cents===session.amount_total&&session.currency==='eur',status:order.status,count:order.package_count,deliveryMethod:order.delivery_method,contact:order.delivery_contact,deliveryDueAt:order.delivery_due_at});
+   return res.json({kind:'photos',verified:['confirmed','delivered'].includes(order.status)&&order.amount_cents===session.amount_total&&session.currency==='eur',status:order.status,count:order.package_count,deliveryMethod:order.delivery_method,contact:order.delivery_contact,details:order.request_details,deliveryDueAt:order.delivery_due_at});
   }
   const result=await pool.query("SELECT id,status,duration_minutes,service_date,start_time FROM lussan_booking.appointments WHERE stripe_checkout_session_id=$1 AND id=$2",[id,session.client_reference_id]);
   if(!result.rowCount)return res.status(404).json({verified:false});
