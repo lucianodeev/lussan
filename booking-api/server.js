@@ -46,6 +46,13 @@ function check(date,time,duration){
  return true;
 }
 app.get('/health',(_,res)=>res.json({ok:true}));
+app.get('/api/readiness',async(_req,res)=>{
+ const status={api:'ok',database:'unavailable',stripe_test:paymentReady()?'configured':'not_ready',live_payments:'disabled'};
+ if(!pool)return res.status(503).json(status);
+ try{await pool.query('SELECT 1 FROM lussan_booking.appointments LIMIT 1');status.database='connected';return res.json(status)}
+ catch(_e){return res.status(503).json(status)}
+});
+app.post('/api/photo-checkout',(_req,res)=>res.status(503).json({error:'photo_payments_pending_processor_approval'}));
 app.get('/api/availability',async(req,res)=>{
  const {date}=req.query;
  if(!/^\d{4}-\d{2}-\d{2}$/.test(date||''))return res.status(400).json({error:'invalid_date'});
