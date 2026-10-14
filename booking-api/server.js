@@ -38,4 +38,4 @@ app.post('/api/booking-requests',async(req,res)=>{
 });
 
 app.post('/api/checkout',(_req,res)=>res.status(503).json({error:'checkout_pending_merchant_approval_and_database_connection'}));
-\napp.listen(process.env.PORT||3000,()=>console.log('Lussan booking API listening'));
+app.listen(process.env.PORT||3000,()=>console.log('Lussan booking API listening'));
