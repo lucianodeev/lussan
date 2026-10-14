@@ -40,4 +40,17 @@ async function loadCartQuote(){const token=new URLSearchParams(location.search).
  try{const r=await fetch('https://lussan-booking-api.onrender.com/api/cart-quotes/'+token);if(!r.ok)throw Error('unavailable');const data=await r.json();box.replaceChildren();const title=document.createElement('h3');title.textContent=data.canPay?cartText()[45]:data.status==='requested'?cartText()[44]:cartText()[47];box.append(title);[...(data.items||[]),...(data.costs||[])].forEach(x=>{const p=document.createElement('p');p.textContent=(x.sku?cartName(x.sku):x.name)+' · '+euros(x.amount);box.append(p)});const total=document.createElement('strong');total.textContent=euros(data.total);box.append(total);if(data.canPay){const button=document.createElement('button');button.className='btn wa';button.textContent=cartText()[46];button.onclick=async()=>{button.disabled=true;try{const d=await postCart('/api/cart-quote-checkout',{token});goCartStripe(d.url)}catch{box.append(document.createTextNode(cartText()[47]));button.disabled=false}};box.append(document.createElement('br'),button)}}catch{box.textContent=cartText()[47]}
 }
 function cartPaidMessage(v,id){return 'Olá! Pagamento confirmado para Lussan & Pedro. Serviços: '+v.items.map(x=>x.name+' (€'+(x.amount/100).toFixed(2)+')').join('; ')+(v.date?'. Data: '+String(v.date).slice(0,10)+' às '+v.time+' (Bruxelas)':'')+(v.address?'. Endereço: '+v.address:'')+'. Preferências: '+(v.details||'A combinar')+(v.photoContact?'. Fotos: link Drive em até 3 dias, por '+v.photoMethod+' para '+v.photoContact:'')+'. Referência: '+id.slice(-12)}
-document.getElementById('cartForm').addEventListener('submit',submitCart);document.getElementById('cartDate').min=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Brussels'}).format(new Date());renderCart();loadCartQuote();
+function initQuickBooking(){
+ const date=document.getElementById('cartDate'),time=document.getElementById('cartTime'),quick=document.getElementById('cartQuickDates'),details=document.getElementById('cartDetails');
+ const locationSelect=document.getElementById('cartLocation');
+ const locale=()=>document.documentElement.lang||'pt';
+ const localDay=offset=>{const now=new Date();now.setDate(now.getDate()+offset);return new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Brussels',year:'numeric',month:'2-digit',day:'2-digit'}).format(now)};
+ for(let d=1;d<=4;d++){const day=localDay(d),button=document.createElement('button');button.type='button';button.className='btn';button.style.cssText='padding:9px 13px;font-size:13px';button.textContent=new Intl.DateTimeFormat(locale(),{weekday:'short',day:'2-digit',month:'short',timeZone:'Europe/Brussels'}).format(new Date(day+'T12:00:00Z'));button.onclick=()=>{date.value=day;quick.querySelectorAll('button').forEach(b=>b.style.outline='');button.style.outline='2px solid #d5af68';};quick.append(button)}
+ if(!date.value)date.value=localDay(1);
+ if(!time.value||time.value==='11:00')time.value='18:00';
+ const detailsLabel=details.closest('label');detailsLabel.hidden=true;
+ const locLabel=locationSelect.closest('label');
+ const update=()=>{const onsite=locationSelect.value==='onsite';locLabel.hidden=onsite;detailsLabel.hidden=!onsite?false:true;quick.hidden=!onsite;};
+ locationSelect.addEventListener('change',update);update();
+}
+document.getElementById('cartForm').addEventListener('submit',submitCart);document.getElementById('cartDate').min=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Brussels'}).format(new Date());renderCart();initQuickBooking();loadCartQuote();
