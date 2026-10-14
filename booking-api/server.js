@@ -37,7 +37,5 @@ app.post('/api/booking-requests',async(req,res)=>{
  }catch(e){await client.query('ROLLBACK');res.status(503).json({error:'unavailable'})}finally{client.release()}
 });
 
-const Stripe=require('stripe');
-const stripe=process.env.STRIPE_SECRET_KEY?Stripe(process.env.STRIPE_SECRET_KEY):null;
 app.post('/api/checkout',(_req,res)=>res.status(503).json({error:'checkout_pending_merchant_approval_and_database_connection'}));
 \napp.listen(process.env.PORT||3000,()=>console.log('Lussan booking API listening'));
