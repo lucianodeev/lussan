@@ -6,14 +6,17 @@ const app=express();
 app.disable('x-powered-by');
 const Stripe=require('stripe');
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
-const paymentReady=()=>Boolean(stripe&&/^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY||'')&&process.env.STRIPE_WEBHOOK_SECRET&&process.env.DATABASE_URL);
+const liveEnabled=process.env.ENABLE_LIVE_PAYMENTS==='true';
+const stripeMode=liveEnabled?'live':'test';
+const modeKey=()=>new RegExp('^(sk|rk)_'+stripeMode+'_').test(process.env.STRIPE_SECRET_KEY||'');
+const paymentReady=()=>Boolean(stripe&&modeKey()&&process.env.STRIPE_WEBHOOK_SECRET&&process.env.DATABASE_URL);
 app.post('/api/stripe-webhook',express.raw({type:'application/json'}),async(req,res)=>{
  if(!paymentReady())return res.sendStatus(503);
  let event;
  try{event=stripe.webhooks.constructEvent(req.body,req.headers['stripe-signature'],process.env.STRIPE_WEBHOOK_SECRET)}catch(e){return res.sendStatus(400)}
  const session=event.data.object;
  if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type)&&session.payment_status==='paid'){
-  if(session.livemode!==false||session.currency!=='eur')return res.sendStatus(400);
+  if(session.livemode!==liveEnabled||session.currency!=='eur')return res.sendStatus(400);
   try{
    const result=await pool.query("UPDATE lussan_booking.appointments SET status='confirmed',paid_at=now() WHERE id=$1 AND stripe_checkout_session_id=$2 AND status='pending' AND amount_cents=$3 RETURNING id",[session.client_reference_id,session.id,session.amount_total]);
    if(!result.rowCount){const already=await pool.query("SELECT 1 FROM lussan_booking.appointments WHERE id=$1 AND stripe_checkout_session_id=$2 AND status='confirmed'",[session.client_reference_id,session.id]);if(!already.rowCount)return res.sendStatus(409)}
@@ -49,7 +52,7 @@ function check(date,time,duration){
 }
 app.get('/health',(_,res)=>res.json({ok:true}));
 app.get('/api/readiness',async(_req,res)=>{
- const status={api:'ok',database:'unavailable',stripe_test:paymentReady()?'configured':'not_ready',live_payments:'disabled',configuration:{database_url:Boolean(process.env.DATABASE_URL),stripe_test_key:/^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY||''),webhook_secret:Boolean(process.env.STRIPE_WEBHOOK_SECRET)}};
+ const status={api:'ok',database:'unavailable',stripe_test:!liveEnabled&&paymentReady()?'configured':'not_ready',stripe_live:liveEnabled&&paymentReady()?'configured':'not_ready',live_payments:liveEnabled?'enabled':'disabled',configuration:{database_url:Boolean(process.env.DATABASE_URL),stripe_mode:stripeMode,stripe_key_valid:modeKey(),webhook_secret:Boolean(process.env.STRIPE_WEBHOOK_SECRET)}};
  if(!pool)return res.status(503).json(status);
  try{await pool.query('SELECT 1 FROM lussan_booking.appointments LIMIT 1');status.database='connected';return res.json(status)}
  catch(e){const code=String(e.code||'');const category=code==='28P01'?'authentication':code==='3D000'?'database_name':code==='42P01'?'schema_or_table':code==='ENOTFOUND'?'dns':code==='ETIMEDOUT'||code==='ECONNREFUSED'?'network':/CERT|TLS|SSL|SELF_SIGNED/i.test(code+' '+e.message)?'tls_certificate':'connection_other';console.error('database readiness failure:',category,'code:',code||'unknown');return res.status(503).json(status)}
@@ -100,9 +103,10 @@ app.post('/api/checkout',async(req,res)=>{
 });
 app.get('/api/payment-status',async(req,res)=>{
  const id=String(req.query.session_id||'');
- if(!/^cs_test_[a-zA-Z0-9]+$/.test(id)||!paymentReady())return res.status(400).json({verified:false});
+ if(!new RegExp('^cs_'+stripeMode+'_[a-zA-Z0-9]+$').test(id)||!paymentReady())return res.status(400).json({verified:false});
  try{
   const session=await stripe.checkout.sessions.retrieve(id);
+  if(session.livemode!==liveEnabled)return res.status(400).json({verified:false});
   if(session.payment_status!=='paid')return res.json({verified:false,status:'pending'});
   const result=await pool.query("SELECT id,status,duration_minutes,service_date,start_time FROM lussan_booking.appointments WHERE stripe_checkout_session_id=$1 AND id=$2",[id,session.client_reference_id]);
   if(!result.rowCount)return res.status(404).json({verified:false});
