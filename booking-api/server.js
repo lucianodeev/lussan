@@ -1,23 +1,25 @@
 'use strict';
 const express=require('express');
 const {Pool}=require('pg');
+const databaseConfig=require('./database-config');
 const app=express();
 app.disable('x-powered-by');
 const Stripe=require('stripe');
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
-const paymentReady=()=>Boolean(stripe&&process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_')&&process.env.STRIPE_WEBHOOK_SECRET&&process.env.DATABASE_URL);
+const paymentReady=()=>Boolean(stripe&&/^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY||'')&&process.env.STRIPE_WEBHOOK_SECRET&&process.env.DATABASE_URL);
 app.post('/api/stripe-webhook',express.raw({type:'application/json'}),async(req,res)=>{
  if(!paymentReady())return res.sendStatus(503);
  let event;
  try{event=stripe.webhooks.constructEvent(req.body,req.headers['stripe-signature'],process.env.STRIPE_WEBHOOK_SECRET)}catch(e){return res.sendStatus(400)}
  const session=event.data.object;
- if(event.type==='checkout.session.completed'&&session.payment_status==='paid'){
+ if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type)&&session.payment_status==='paid'){
+  if(session.livemode!==false||session.currency!=='eur')return res.sendStatus(400);
   try{
    const result=await pool.query("UPDATE lussan_booking.appointments SET status='confirmed',paid_at=now() WHERE id=$1 AND stripe_checkout_session_id=$2 AND status='pending' AND amount_cents=$3 RETURNING id",[session.client_reference_id,session.id,session.amount_total]);
    if(!result.rowCount){const already=await pool.query("SELECT 1 FROM lussan_booking.appointments WHERE id=$1 AND stripe_checkout_session_id=$2 AND status='confirmed'",[session.client_reference_id,session.id]);if(!already.rowCount)return res.sendStatus(409)}
   }catch(e){return res.sendStatus(503)}
  }
- if(event.type==='checkout.session.expired'){
+ if(['checkout.session.expired','checkout.session.async_payment_failed'].includes(event.type)){
   try{await pool.query("UPDATE lussan_booking.appointments SET status='cancelled' WHERE stripe_checkout_session_id=$1 AND status='pending'",[session.id])}catch(e){return res.sendStatus(503)}
  }
  res.json({received:true});
@@ -34,7 +36,7 @@ app.use((req,res,next)=>{
  next();
 });
 app.use(express.json({limit:'8kb'}));
-const pool=process.env.DATABASE_URL?new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.PGSSL==='disable'?false:{rejectUnauthorized:true}}):null;
+const pool=process.env.DATABASE_URL?new Pool(databaseConfig(process.env.DATABASE_URL)):null;
 const ZONE='Europe/Brussels';
 const prices={30:8000,60:15000,90:22500,120:30000};
 function localDate(){return new Intl.DateTimeFormat('en-CA',{timeZone:ZONE,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}
@@ -42,12 +44,12 @@ const timeRe=/^([01]\d|2[0-3]):(00|30)$/;
 function check(date,time,duration){
  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!timeRe.test(time)||!prices[duration])return false;
  const mins=Number(time.slice(0,2))*60+Number(time.slice(3));
- if(mins<660||mins+duration>1380||date<localDate())return false;
+ if(mins<660||mins+duration>1380||date<localDate()||date+'T'+time<=new Intl.DateTimeFormat('sv-SE',{timeZone:ZONE,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date()).replace(' ','T'))return false;
  return true;
 }
 app.get('/health',(_,res)=>res.json({ok:true}));
 app.get('/api/readiness',async(_req,res)=>{
- const status={api:'ok',database:'unavailable',stripe_test:paymentReady()?'configured':'not_ready',live_payments:'disabled'};
+ const status={api:'ok',database:'unavailable',stripe_test:paymentReady()?'configured':'not_ready',live_payments:'disabled',configuration:{database_url:Boolean(process.env.DATABASE_URL),stripe_test_key:/^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY||''),webhook_secret:Boolean(process.env.STRIPE_WEBHOOK_SECRET)}};
  if(!pool)return res.status(503).json(status);
  try{await pool.query('SELECT 1 FROM lussan_booking.appointments LIMIT 1');status.database='connected';return res.json(status)}
  catch(e){const code=String(e.code||'');const category=code==='28P01'?'authentication':code==='3D000'?'database_name':code==='42P01'?'schema_or_table':code==='ENOTFOUND'?'dns':code==='ETIMEDOUT'||code==='ECONNREFUSED'?'network':/CERT|TLS|SSL|SELF_SIGNED/i.test(code+' '+e.message)?'tls_certificate':'connection_other';console.error('database readiness failure:',category,'code:',code||'unknown');return res.status(503).json(status)}
@@ -60,6 +62,7 @@ app.get('/api/availability',async(req,res)=>{
 });
 app.post('/api/booking-requests',async(req,res)=>{
  const {date,time,duration,name,contact}=req.body||{};
+ if(!paymentReady())return res.status(503).json({error:'checkout_not_configured'});
  if(!check(date,time,Number(duration))||typeof name!=='string'||name.trim().length<2||name.length>100||typeof contact!=='string'||contact.trim().length<5||contact.length>160)return res.status(400).json({error:'invalid_request'});
  const start=Number(time.slice(0,2))*60+Number(time.slice(3)),end=start+Number(duration);
  const endTime=String(Math.floor(end/60)).padStart(2,'0')+':'+String(end%60).padStart(2,'0');
@@ -93,7 +96,7 @@ app.post('/api/checkout',async(req,res)=>{
   const saved=await pool.query("UPDATE lussan_booking.appointments SET stripe_checkout_session_id=$1 WHERE id=$2 AND status='pending' AND stripe_checkout_session_id IS NULL RETURNING id",[session.id,id]);
   if(!saved.rowCount)return res.status(409).json({error:'booking_unavailable'});
   res.json({url:session.url});
- }catch(e){console.error('checkout error',e.message);res.status(503).json({error:'checkout_unavailable'})}
+ }catch(e){console.error('checkout error',e.code||e.type||'unknown');res.status(503).json({error:'checkout_unavailable'})}
 });
 app.get('/api/payment-status',async(req,res)=>{
  const id=String(req.query.session_id||'');
@@ -104,7 +107,7 @@ app.get('/api/payment-status',async(req,res)=>{
   const result=await pool.query("SELECT id,status,duration_minutes,service_date,start_time FROM lussan_booking.appointments WHERE stripe_checkout_session_id=$1 AND id=$2",[id,session.client_reference_id]);
   if(!result.rowCount)return res.status(404).json({verified:false});
   const booking=result.rows[0];
-  return res.json({verified:booking.status==='confirmed',status:booking.status,date:booking.service_date,time:booking.start_time,duration:booking.duration_minutes});
+  return res.json({verified:booking.status==='confirmed',status:booking.status,date:booking.service_date instanceof Date?new Intl.DateTimeFormat('en-CA',{timeZone:ZONE,year:'numeric',month:'2-digit',day:'2-digit'}).format(booking.service_date):booking.service_date,time:booking.start_time,duration:booking.duration_minutes});
  }catch(e){console.error('payment status error',e.code||'unknown');return res.status(503).json({verified:false})}
 });
 app.listen(process.env.PORT||3000,()=>console.log('Lussan booking API listening'));
