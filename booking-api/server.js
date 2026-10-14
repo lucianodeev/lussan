@@ -77,7 +77,7 @@ const cartApi=require('./cart').initialize({app,pool,stripe,paymentReady,liveEna
 app.post('/api/service-checkout',async(req,res)=>{
  if(!paymentReady())return res.status(503).json({error:'checkout_not_configured'});
  const sku=typeof req.body?.sku==='string'?req.body.sku:'';
- if(!Object.hasOwn(serviceCatalog,sku))return res.status(400).json({error:'invalid_service'});
+ if(/^(voice|video)_/.test(sku)||!Object.hasOwn(serviceCatalog,sku))return res.status(400).json({error:'invalid_service'});
  const contact=typeof req.body?.contact==='string'?req.body.contact.trim():'';
  const details=typeof req.body?.details==='string'?req.body.details.trim():'';
  if(details.length>1000||contact.length>100||!/^[+\d ()-]+$/.test(contact)||contact.replace(/\D/g,'').length<7||contact.replace(/\D/g,'').length>15)return res.status(400).json({error:'invalid_service_contact'});
