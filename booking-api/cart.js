@@ -1,12 +1,12 @@
 'use strict';
 const crypto=require('node:crypto');
 const massagePrices={30:8000,60:15000,90:22500,120:30000};
-function buildCart(skus,services,allowRetired=false){
+function buildCart(skus,services,allowRetired=false,travelPackage=false){
  if(!Array.isArray(skus)||!skus.length||skus.length>12||new Set(skus).size!==skus.length)throw Error('invalid_cart');
  let massage=0,photos=0,physicalMinutes=0;
  const items=skus.map(sku=>{
   if(typeof sku!=='string'||!allowRetired&&/^(voice|video)_/.test(sku))throw Error('invalid_cart');
-  if(/^massage_(30|60|90|120)$/.test(sku)){if(massage)throw Error('one_massage');massage=Number(sku.split('_')[1]);physicalMinutes+=massage;return {sku,name:'Massagem com Lussan & Pedro — '+massage+' min',amount:massagePrices[massage]}}
+  if(/^massage_(30|60|90|120)$/.test(sku)){if(massage)throw Error('one_massage');massage=Number(sku.split('_')[1]);physicalMinutes+=massage;return {sku,name:'Massagem com Lussan & Pedro — '+massage+' min',amount:travelPackage&&massage===120?40000:massagePrices[massage]}}
   if(/^photos_(3|5|10)$/.test(sku)){if(photos)throw Error('one_photo_package');photos=Number(sku.split('_')[1]);return {sku,name:'Fotos — '+photos+' fotos',amount:{3:2000,5:3000,10:5000}[photos]}}
   if(!Object.hasOwn(services,sku))throw Error('invalid_cart');
   const item=services[sku];if(item.kind==='physical')physicalMinutes+=sku==='wax_legs'?60:30;
@@ -28,7 +28,7 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
    const r=await client.query('SELECT * FROM lussan_booking.cart_orders WHERE id=$1 FOR UPDATE',[id]);const order=r.rows[0];
    if(!order||!['approved','pending'].includes(order.status)||new Date(order.valid_until)<=new Date())throw Error('quote_unavailable');
    if(order.stripe_checkout_session_id){session=await stripe.checkout.sessions.retrieve(order.stripe_checkout_session_id);if(session.status!=='open')throw Error('checkout_unavailable');await client.query('COMMIT');return res.json({url:session.url})}
-   const data=order.payload,cart=buildCart(data.skus,services);
+   const data=order.payload,cart=buildCart(data.skus,services,false,data.pricingVersion===2&&data.location==='travel');
    const costs=order.cost_items;
    if(!Array.isArray(costs)||costs.some(x=>typeof x.name!=='string'||x.name.length>150||!Number.isSafeInteger(x.amount)||x.amount<=0)||cart.total+costs.reduce((n,x)=>n+x.amount,0)!==order.amount_cents)throw Error('invalid_quote');
    let appointment;
@@ -52,11 +52,11 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
  }
  app.post('/api/cart',secure,async(req,res)=>{
   if(!paymentReady())return res.status(503).json({error:'checkout_not_configured'});
-  let cart;try{cart=buildCart(req.body?.skus,services)}catch(e){return res.status(400).json({error:e.message})}
+  let cart;try{cart=buildCart(req.body?.skus,services,false,req.body?.location==='travel')}catch(e){return res.status(400).json({error:e.message})}
   const b=req.body||{},name=clean(b.name,100),contact=clean(b.contact,100),details=clean(b.details,1000),location=b.location||'onsite';
   if(name.length<2||!phone(contact)||!['onsite','local','travel'].includes(location)||typeof b.details==='string'&&b.details.length>1000)return res.status(400).json({error:'invalid_contact'});
   if(cart.physicalMinutes>720)return res.status(400).json({error:'invalid_schedule'});
- const payload={skus:cart.items.map(x=>x.sku),name,contact,details,location};
+ const payload={skus:cart.items.map(x=>x.sku),name,contact,details,location,pricingVersion:2};
   if(cart.photos){const method=b.photoMethod||'whatsapp',delivery=method==='whatsapp'?contact:clean(b.photoContact,254);if(!['email','whatsapp'].includes(method)||method==='email'&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(delivery)||details.length<3)return res.status(400).json({error:'invalid_photo_details'});payload.photoMethod=method;payload.photoContact=delivery}
   if(cart.physicalMinutes){
    if(typeof b.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(b.date)||Number.isNaN(Date.parse(b.date))||new Date(b.date).toISOString().slice(0,10)!==b.date||!/^([01]\d|2[0-3]):(00|30)$/.test(b.time||''))return res.status(400).json({error:'invalid_schedule'});
@@ -75,13 +75,13 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
    const r=await pool.query('INSERT INTO lussan_booking.cart_orders(payload,amount_cents,status,quote_token) VALUES($1::jsonb,$2,$3,$4) RETURNING id',[JSON.stringify(payload),cart.total,location==='onsite'?'approved':'requested',token]);
    if(location==='onsite')return checkout(r.rows[0].id,res);
    // Budgets are informational only. Only owner-approved cost_items can be charged.
-   const estimate=cart.total+(location==='local'?2500:Math.round(payload.transportBudget*100+payload.nights*payload.hotelBudget*100+payload.travelHours*6000));
+   const estimate=cart.total+(location==='local'?2500:Math.round(payload.transportBudget*100+0));
    return res.status(201).json({quoteUrl:'https://lussan.onrender.com/?quote='+token+'#cart',reference:r.rows[0].id,estimateCents:estimate,status:'requested'});
   }catch(e){console.error('cart request:',e.code||'unknown');return res.status(503).json({error:'cart_unavailable'})}
  });
  app.get('/api/cart-quotes/:token',secure,async(req,res)=>{
   if(!/^[a-f0-9]{64}$/.test(req.params.token))return res.sendStatus(404);
-  try{const r=await pool.query('SELECT status,amount_cents,cost_items,payload,valid_until FROM lussan_booking.cart_orders WHERE quote_token=$1',[req.params.token]);const o=r.rows[0];if(!o)return res.sendStatus(404);return res.json({status:o.status,total:o.amount_cents,items:buildCart(o.payload.skus,services,true).items,costs:o.cost_items,date:o.payload.date,time:o.payload.time,location:o.payload.location,validUntil:o.valid_until,canPay:['approved','pending'].includes(o.status)&&new Date(o.valid_until)>new Date()})}catch(e){return res.sendStatus(503)}
+  try{const r=await pool.query('SELECT status,amount_cents,cost_items,payload,valid_until FROM lussan_booking.cart_orders WHERE quote_token=$1',[req.params.token]);const o=r.rows[0];if(!o)return res.sendStatus(404);return res.json({status:o.status,total:o.amount_cents,items:buildCart(o.payload.skus,services,true,o.payload.pricingVersion===2&&o.payload.location==='travel').items,costs:o.cost_items,date:o.payload.date,time:o.payload.time,location:o.payload.location,validUntil:o.valid_until,canPay:['approved','pending'].includes(o.status)&&new Date(o.valid_until)>new Date()})}catch(e){return res.sendStatus(503)}
  });
  app.post('/api/cart-quote-checkout',secure,async(req,res)=>{
   if(!paymentReady()||!/^[a-f0-9]{64}$/.test(req.body?.token||''))return res.sendStatus(400);
@@ -102,7 +102,7 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
   if(session.metadata?.project!=='lussan'||session.metadata?.order_type!=='cart')return false;
   const r=await pool.query('SELECT * FROM lussan_booking.cart_orders WHERE id=$1 AND stripe_checkout_session_id=$2',[session.client_reference_id,session.id]);const o=r.rows[0];if(!o){res.status(404).json({verified:false});return true}
   const verified=o.status==='confirmed'&&session.currency==='eur'&&o.amount_cents===session.amount_total;
-  res.json({kind:'cart',status:o.status,verified,...(verified?{items:buildCart(o.payload.skus,services,true).items,costs:o.cost_items,contact:o.payload.contact,details:o.payload.details,date:o.payload.date,time:o.payload.time,location:o.payload.location,address:o.payload.address,photoMethod:o.payload.photoMethod,photoContact:o.payload.photoContact,deliveryDueAt:o.paid_at?new Date(new Date(o.paid_at).getTime()+3*86400000).toISOString():null}:{})});return true;
+  res.json({kind:'cart',status:o.status,verified,...(verified?{items:buildCart(o.payload.skus,services,true,o.payload.pricingVersion===2&&o.payload.location==='travel').items,costs:o.cost_items,contact:o.payload.contact,details:o.payload.details,date:o.payload.date,time:o.payload.time,location:o.payload.location,address:o.payload.address,photoMethod:o.payload.photoMethod,photoContact:o.payload.photoContact,deliveryDueAt:o.paid_at?new Date(new Date(o.paid_at).getTime()+3*86400000).toISOString():null}:{})});return true;
  }
  return {webhook,status};
 }
