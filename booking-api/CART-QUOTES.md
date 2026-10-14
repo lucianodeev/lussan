@@ -27,3 +27,9 @@ O servidor calcula preços de catálogo, ignora valores enviados pelo cliente e 
 Deslocações locais incluem 30 minutos antes e depois do atendimento na agenda. Viagens reservam o dia completo do atendimento; os dias adicionais de ida/volta devem ser bloqueados pelo proprietário antes de aprovar. Expiração/falha assíncrona do checkout cancela apenas reservas ainda pendentes.
 
 O link do orçamento contém um token aleatório de acesso; tratar como privado. Não contém endereço nem contacto do cliente na URL. As tabelas são privadas e protegidas por RLS, sem acesso anon/authenticated.
+
+## Pacotes até 100 km de Bruxelas
+
+Na lista do mesmo formulário: `travel_120` 2h €400; `travel_180` 3h €600; `travel_240` 4h €800; `travel_300` 5h €1.000; `travel_360` 6h €1.200. Preço da dupla, mais transporte ida/volta para dois. Apenas um pacote de atendimento pode ser escolhido por pedido; extras como depilação continuam disponíveis.
+
+Confirmar a distância do endereço antes de aprovar esses pacotes. Exemplo: `node booking-api/approve-quote.js --id UUID --transport 100 --distance-km 80` para apresentar; adicionar `--confirm` para aprovar. Distância máxima 100 km de Bruxelas; valores fora desse limite são recusados. Outros destinos exigem orçamento personalizado. Reservar a duração real do pacote na agenda, acrescida dos serviços presenciais adicionais.

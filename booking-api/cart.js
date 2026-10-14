@@ -3,9 +3,10 @@ const crypto=require('node:crypto');
 const massagePrices={30:8000,60:15000,90:22500,120:30000};
 function buildCart(skus,services,allowRetired=false,travelPackage=false){
  if(!Array.isArray(skus)||!skus.length||skus.length>12||new Set(skus).size!==skus.length)throw Error('invalid_cart');
- let massage=0,photos=0,physicalMinutes=0;
+ let massage=0,photos=0,physicalMinutes=0,travel=false;
  const items=skus.map(sku=>{
   if(typeof sku!=='string'||!allowRetired&&/^(voice|video)_/.test(sku))throw Error('invalid_cart');
+  if(/^travel_(120|180|240|300|360)$/.test(sku)){if(massage)throw Error('one_massage');travel=true;massage=Number(sku.split('_')[1]);physicalMinutes+=massage;return {sku,name:'Massagem com Lussan & Pedro — viagem até 100 km — '+massage/60+'h',amount:massage/60*20000}}
   if(/^massage_(30|60|90|120)$/.test(sku)){if(massage)throw Error('one_massage');massage=Number(sku.split('_')[1]);physicalMinutes+=massage;return {sku,name:'Massagem com Lussan & Pedro — '+massage+' min',amount:travelPackage&&massage===120?40000:massagePrices[massage]}}
   if(/^photos_(3|5|10)$/.test(sku)){if(photos)throw Error('one_photo_package');photos=Number(sku.split('_')[1]);return {sku,name:'Fotos — '+photos+' fotos',amount:{3:2000,5:3000,10:5000}[photos]}}
   if(!Object.hasOwn(services,sku))throw Error('invalid_cart');
@@ -13,7 +14,7 @@ function buildCart(skus,services,allowRetired=false,travelPackage=false){
   return {sku,name:item.name,amount:item.amount};
  });
  if(skus.includes('wax_chest_abdomen')&&(skus.includes('wax_chest')||skus.includes('wax_abdomen')))throw Error('overlapping_wax');
- return {items,massage,photos,physicalMinutes,total:items.reduce((n,x)=>n+x.amount,0)};
+ return {items,massage,photos,physicalMinutes,travel,total:items.reduce((n,x)=>n+x.amount,0)};
 }
 function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
  const zone='Europe/Brussels';
@@ -29,6 +30,7 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
    if(!order||!['approved','pending'].includes(order.status)||new Date(order.valid_until)<=new Date())throw Error('quote_unavailable');
    if(order.stripe_checkout_session_id){session=await stripe.checkout.sessions.retrieve(order.stripe_checkout_session_id);if(session.status!=='open')throw Error('checkout_unavailable');await client.query('COMMIT');return res.json({url:session.url})}
    const data=order.payload,cart=buildCart(data.skus,services,false,data.pricingVersion===2&&data.location==='travel');
+   if(cart.travel&&(!Number.isFinite(data.confirmedDistanceKm)||data.confirmedDistanceKm<0||data.confirmedDistanceKm>100))throw Error('invalid_quote');
    const costs=order.cost_items;
    if(!Array.isArray(costs)||costs.some(x=>typeof x.name!=='string'||x.name.length>150||!Number.isSafeInteger(x.amount)||x.amount<=0)||cart.total+costs.reduce((n,x)=>n+x.amount,0)!==order.amount_cents)throw Error('invalid_quote');
    let appointment;
@@ -62,6 +64,8 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
    if(typeof b.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(b.date)||Number.isNaN(Date.parse(b.date))||new Date(b.date).toISOString().slice(0,10)!==b.date||!/^([01]\d|2[0-3]):(00|30)$/.test(b.time||''))return res.status(400).json({error:'invalid_schedule'});
    const start=Number(b.time.slice(0,2))*60+Number(b.time.slice(3));if(b.date+'T'+b.time<=stamp()||start<660||start+cart.physicalMinutes>1380)return res.status(400).json({error:'invalid_schedule'});payload.date=b.date;payload.time=b.time;
   }else if(location!=='onsite')return res.status(400).json({error:'travel_requires_physical_service'});
+  if(cart.travel&&location!=='travel')return res.status(400).json({error:'travel_location_required'});
+  if(cart.travel)payload.distanceLimitKm=100;
   if(location==='travel'&&cart.massage<120)return res.status(400).json({error:'travel_minimum_120'});
   if(location!=='onsite'){
    const address=clean(b.address,400),city=clean(b.city,100),country=clean(b.country,100);if(address.length<5||city.length<2||country.length<2)return res.status(400).json({error:'invalid_address'});

@@ -12,15 +12,17 @@ function costsFor(location,args,pricingVersion=1){
 }
 async function main(){
  const {Pool}=require('pg');
- const args={};for(let i=2;i<process.argv.length;i++){const key=process.argv[i];if(key==='--confirm'){args.confirm=true;continue}if(!/^--(id|transport|hotel|travel-hours)$/.test(key)||process.argv[i+1]===undefined)throw Error('Use --id UUID [--transport EUR] [--hotel EUR] [--travel-hours HOURS] [--confirm]');args[key.slice(2)]=process.argv[++i]}
+ const args={};for(let i=2;i<process.argv.length;i++){const key=process.argv[i];if(key==='--confirm'){args.confirm=true;continue}if(!/^--(id|transport|hotel|travel-hours|distance-km)$/.test(key)||process.argv[i+1]===undefined)throw Error('Use --id UUID [--transport EUR] [--hotel EUR] [--travel-hours HOURS] [--confirm]');args[key.slice(2)]=process.argv[++i]}
  if(!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(args.id||''))throw Error('Invalid quote ID');
  if(!process.env.DATABASE_URL)throw Error('Run in the Render API service environment');
  const pool=new Pool(databaseConfig(process.env.DATABASE_URL)),c=await pool.connect();
  try{await c.query('BEGIN');const r=await c.query('SELECT id,status,payload,amount_cents,stripe_checkout_session_id FROM lussan_booking.cart_orders WHERE id=$1 FOR UPDATE',[args.id]);const o=r.rows[0];if(!o||o.status!=='requested'||o.stripe_checkout_session_id)throw Error('Quote not awaiting approval');
  const costs=costsFor(o.payload.location,args,o.payload.pricingVersion||1),total=o.amount_cents+costs.reduce((n,x)=>n+x.amount,0);
- if(o.payload.location==='travel'&&!o.payload.skus.includes('massage_120'))throw Error('Travel requires a 2h massage');
- console.log(JSON.stringify({id:o.id,date:o.payload.date,time:o.payload.time,servicesCents:o.amount_cents,costs,totalCents:total,action:args.confirm?'APPROVE':'PREVIEW'}));
- if(args.confirm){await c.query("UPDATE lussan_booking.cart_orders SET status='approved',cost_items=$1::jsonb,amount_cents=$2,valid_until=now()+interval '24 hours' WHERE id=$3 AND status='requested'",[JSON.stringify(costs),total,o.id]);await c.query('COMMIT');console.log('Approved. Customer can pay using the original private quote link.')}else await c.query('ROLLBACK');
+ const travelSku=o.payload.skus.find(x=>/^travel_(120|180|240|300|360)$/.test(x));
+ if(o.payload.location==='travel'&&!o.payload.skus.includes('massage_120')&&!travelSku)throw Error('Travel requires at least a 2h massage');
+ let distance=null;if(travelSku){distance=Number(args['distance-km']);if(!Number.isFinite(distance)||distance<0||distance>100)throw Error('Confirm distance with --distance-km N (maximum 100 km from Brussels)')}
+ console.log(JSON.stringify({id:o.id,date:o.payload.date,time:o.payload.time,servicesCents:o.amount_cents,costs,totalCents:total,confirmedDistanceKm:distance,action:args.confirm?'APPROVE':'PREVIEW'}));
+ if(args.confirm){await c.query("UPDATE lussan_booking.cart_orders SET status='approved',cost_items=$1::jsonb,amount_cents=$2,payload=CASE WHEN $4::numeric IS NULL THEN payload ELSE jsonb_set(payload,'{confirmedDistanceKm}',to_jsonb($4::numeric)) END,valid_until=now()+interval '24 hours' WHERE id=$3 AND status='requested'",[JSON.stringify(costs),total,o.id,distance]);await c.query('COMMIT');console.log('Approved. Customer can pay using the original private quote link.')}else await c.query('ROLLBACK');
  }catch(e){await c.query('ROLLBACK');throw e}finally{c.release();await pool.end()}
 }
 if(require.main===module)main().catch(e=>{console.error(e.message);process.exitCode=1});
