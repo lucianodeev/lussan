@@ -46,7 +46,7 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
     if(busy.rowCount)throw Error('slot_unavailable');
     const a=await client.query("INSERT INTO lussan_booking.appointments(service_date,start_time,end_time,duration_minutes,amount_cents,client_name,client_contact,status) VALUES($1,$2,$3,$4,$5,$6,$7,'pending') RETURNING id",[date,begin,finish,cart.massage||30,order.amount_cents,data.name,data.contact]);appointment=a.rows[0].id;
    }
-   session=await stripe.checkout.sessions.create({mode:'payment',client_reference_id:id,metadata:{project:'lussan',order_type:'cart'},line_items:[...cart.items,...costs].map(line),success_url:'https://lussan.onrender.com/?payment=processing&session_id={CHECKOUT_SESSION_ID}',cancel_url:'https://lussan.onrender.com/?payment=cancelled#cart',expires_at:Math.floor(Date.now()/1000)+1800},{idempotencyKey:'lussan-cart-'+id});
+   session=await stripe.checkout.sessions.create({mode:'payment',client_reference_id:id,...(data.magazineEmail?{customer_email:data.magazineEmail}:{}),metadata:{project:'lussan',order_type:'cart'},line_items:[...cart.items,...costs].map(line),success_url:'https://lussan.onrender.com/?payment=processing&session_id={CHECKOUT_SESSION_ID}',cancel_url:'https://lussan.onrender.com/?payment=cancelled#cart',expires_at:Math.floor(Date.now()/1000)+1800},{idempotencyKey:'lussan-cart-'+id});
    created=true;
    if(appointment)await client.query('UPDATE lussan_booking.appointments SET stripe_checkout_session_id=$1 WHERE id=$2',[session.id,appointment]);
    await client.query("UPDATE lussan_booking.cart_orders SET status='pending',stripe_checkout_session_id=$1,appointment_id=$2 WHERE id=$3",[session.id,appointment||null,id]);
