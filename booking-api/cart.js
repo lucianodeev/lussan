@@ -60,6 +60,7 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
   if(name.length<2||!phone(contact)||!['onsite','local','travel'].includes(location)||typeof b.details==='string'&&b.details.length>1000)return res.status(400).json({error:'invalid_contact'});
   if(cart.physicalMinutes>720)return res.status(400).json({error:'invalid_schedule'});
  const payload={skus:cart.items.map(x=>x.sku),name,contact,details,location,pricingVersion:2};
+  if(cart.items.some(x=>x.sku==='magazine_presale')){const email=clean(b.magazineEmail,254);if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return res.status(400).json({error:'invalid_magazine_email'});payload.magazineEmail=email}
   if(cart.photos){const method=b.photoMethod||'whatsapp',delivery=method==='whatsapp'?contact:clean(b.photoContact,254);if(!['email','whatsapp'].includes(method)||method==='email'&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(delivery)||details.length<3)return res.status(400).json({error:'invalid_photo_details'});payload.photoMethod=method;payload.photoContact=delivery}
   if(cart.physicalMinutes){
    if(typeof b.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(b.date)||Number.isNaN(Date.parse(b.date))||new Date(b.date).toISOString().slice(0,10)!==b.date||!/^([01]\d|2[0-3]):(00|30)$/.test(b.time||''))return res.status(400).json({error:'invalid_schedule'});
