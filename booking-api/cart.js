@@ -31,7 +31,7 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
    if(order.stripe_checkout_session_id){session=await stripe.checkout.sessions.retrieve(order.stripe_checkout_session_id);if(session.status!=='open')throw Error('checkout_unavailable');await client.query('COMMIT');return res.json({url:session.url})}
    const data=order.payload,cart=buildCart(data.skus,services,false,data.pricingVersion===2&&data.location==='travel');
    if(cart.travel&&(!Number.isFinite(data.confirmedDistanceKm)||data.confirmedDistanceKm<0||data.confirmedDistanceKm>100))throw Error('invalid_quote');
-   const costs=order.cost_items;
+   const costs=order.cost_items == null && data.location==='onsite' ? [] : order.cost_items;
    if(!Array.isArray(costs)||costs.some(x=>typeof x.name!=='string'||x.name.length>150||!Number.isSafeInteger(x.amount)||x.amount<=0)||cart.total+costs.reduce((n,x)=>n+x.amount,0)!==order.amount_cents)throw Error('invalid_quote');
    let appointment;
    if(cart.physicalMinutes){
