@@ -50,7 +50,7 @@ app.get('/api/readiness',async(_req,res)=>{
  const status={api:'ok',database:'unavailable',stripe_test:paymentReady()?'configured':'not_ready',live_payments:'disabled'};
  if(!pool)return res.status(503).json(status);
  try{await pool.query('SELECT 1 FROM lussan_booking.appointments LIMIT 1');status.database='connected';return res.json(status)}
- catch(_e){return res.status(503).json(status)}
+ catch(e){const code=String(e.code||'');const category=code==='28P01'?'authentication':code==='3D000'?'database_name':code==='42P01'?'schema_or_table':code==='ENOTFOUND'?'dns':code==='ETIMEDOUT'||code==='ECONNREFUSED'?'network':/CERT|TLS|SSL|SELF_SIGNED/i.test(code+' '+e.message)?'tls_certificate':'connection_other';console.error('database readiness failure:',category,'code:',code||'unknown');return res.status(503).json(status)}
 });
 app.post('/api/photo-checkout',(_req,res)=>res.status(503).json({error:'photo_payments_pending_processor_approval'}));
 app.get('/api/availability',async(req,res)=>{
