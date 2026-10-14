@@ -8,6 +8,7 @@ function buildCart(skus,services,allowRetired=false,travelPackage=false){
   if(typeof sku!=='string'||!allowRetired&&/^(voice|video)_/.test(sku))throw Error('invalid_cart');
   if(/^travel_(120|180|240|300|360)$/.test(sku)){if(massage)throw Error('one_massage');travel=true;massage=Number(sku.split('_')[1]);physicalMinutes+=massage;return {sku,name:'Massagem com Lussan & Pedro — viagem até 100 km — '+massage/60+'h',amount:massage/60*20000}}
   if(/^massage_(30|60|90|120)$/.test(sku)){if(massage)throw Error('one_massage');massage=Number(sku.split('_')[1]);physicalMinutes+=massage;return {sku,name:'Massagem com Lussan & Pedro — '+massage+' min',amount:travelPackage&&massage===120?40000:massagePrices[massage]}}
+  if(sku==='magazine_presale')return {sku,name:'LUSSAN & PEDRO MAGAZINE — Pré-venda da 1.ª edição digital (entrega futura)',amount:990};
   if(/^photos_(3|5|10)$/.test(sku)){if(photos)throw Error('one_photo_package');photos=Number(sku.split('_')[1]);return {sku,name:'Fotos — '+photos+' fotos',amount:{3:2000,5:3000,10:5000}[photos]}}
   if(!Object.hasOwn(services,sku))throw Error('invalid_cart');
   const item=services[sku];if(item.kind==='physical')physicalMinutes+=sku==='wax_legs'?60:30;
