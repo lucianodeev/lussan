@@ -22,6 +22,17 @@ app.post('/api/stripe-webhook',express.raw({type:'application/json'}),async(req,
  }
  res.json({received:true});
 });
+app.use((req,res,next)=>{
+ const origin=req.headers.origin;
+ if(origin==='https://lussan.onrender.com'){
+  res.setHeader('Access-Control-Allow-Origin',origin);
+  res.setHeader('Vary','Origin');
+  res.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers','Content-Type');
+ }
+ if(req.method==='OPTIONS')return res.sendStatus(origin==='https://lussan.onrender.com'?204:403);
+ next();
+});
 app.use(express.json({limit:'8kb'}));
 const pool=process.env.DATABASE_URL?new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.PGSSL==='disable'?false:{rejectUnauthorized:true}}):null;
 const ZONE='Europe/Brussels';
