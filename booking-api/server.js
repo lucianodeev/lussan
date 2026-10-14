@@ -34,7 +34,7 @@ app.use((req,res,next)=>{
  next();
 });
 app.use(express.json({limit:'8kb'}));
-const pool=process.env.DATABASE_URL?new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.PGSSL==='disable'?false:{rejectUnauthorized:true}}):null;
+const pool=process.env.DATABASE_URL?new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.PGSSL==='disable'?false:{rejectUnauthorized:false}}):null;
 const ZONE='Europe/Brussels';
 const prices={30:8000,60:15000,90:22500,120:30000};
 function localDate(){return new Intl.DateTimeFormat('en-CA',{timeZone:ZONE,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}
