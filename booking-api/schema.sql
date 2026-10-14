@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS appointments (
  service_date date NOT NULL,
  start_time time NOT NULL,
  end_time time NOT NULL,
- duration_minutes integer NOT NULL CHECK(duration_minutes IN(30,60,90,120)),
+ duration_minutes integer NOT NULL CHECK(duration_minutes IN(30,60,90,120,180,240,300,360)),
  amount_cents integer NOT NULL CHECK(amount_cents>0),
  client_name text NOT NULL,
  client_contact text NOT NULL,
