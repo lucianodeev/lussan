@@ -91,7 +91,7 @@ app.post('/api/checkout',async(req,res)=>{
   if(booking.stripe_checkout_session_id)return res.status(409).json({error:'checkout_already_created'});
   const session=await stripe.checkout.sessions.create({
    mode:'payment',client_reference_id:id,
-   line_items:[{price_data:{currency:'eur',unit_amount:booking.amount_cents,product_data:{name:'Massagem relaxante não sexual — '+booking.duration_minutes+' min'}},quantity:1}],
+   line_items:[{price_data:{currency:'eur',unit_amount:booking.amount_cents,product_data:{name:'Massagem — '+booking.duration_minutes+' min'}},quantity:1}],
    success_url:'https://lussan.onrender.com/?payment=processing&session_id={CHECKOUT_SESSION_ID}',
    cancel_url:'https://lussan.onrender.com/?payment=cancelled',
    expires_at:Math.floor(Date.now()/1000)+1800
