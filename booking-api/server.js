@@ -4,7 +4,7 @@ const {Pool}=require('pg');
 const app=express();
 app.disable('x-powered-by');
 app.use(express.json({limit:'8kb'}));
-const pool=new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.PGSSL==='disable'?false:{rejectUnauthorized:false}});
+const pool=process.env.DATABASE_URL?new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.PGSSL==='disable'?false:{rejectUnauthorized:true}}):null;
 const ZONE='Europe/Brussels';
 const prices={30:8000,60:15000,90:22500,120:30000};
 function localDate(){return new Intl.DateTimeFormat('en-CA',{timeZone:ZONE,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}
@@ -19,14 +19,14 @@ app.get('/health',(_,res)=>res.json({ok:true}));
 app.get('/api/availability',async(req,res)=>{
  const {date}=req.query;
  if(!/^\d{4}-\d{2}-\d{2}$/.test(date||''))return res.status(400).json({error:'invalid_date'});
- try{const r=await pool.query("SELECT start_time,end_time FROM lussan_booking.appointments WHERE service_date=$1 AND status IN ('pending','confirmed') UNION ALL SELECT start_time,end_time FROM lussan_booking.blocked_slots WHERE service_date=$1",[date]);res.json({date,timezone:ZONE,busy:r.rows})}catch(e){res.status(503).json({error:'unavailable'})}
+ if(!pool)return res.status(503).json({error:'database_not_configured'});try{const r=await pool.query("SELECT start_time,end_time FROM lussan_booking.appointments WHERE service_date=$1 AND status IN ('pending','confirmed') UNION ALL SELECT start_time,end_time FROM lussan_booking.blocked_slots WHERE service_date=$1",[date]);res.json({date,timezone:ZONE,busy:r.rows})}catch(e){res.status(503).json({error:'unavailable'})}
 });
 app.post('/api/booking-requests',async(req,res)=>{
  const {date,time,duration,name,contact}=req.body||{};
  if(!check(date,time,Number(duration))||typeof name!=='string'||name.trim().length<2||name.length>100||typeof contact!=='string'||contact.trim().length<5||contact.length>160)return res.status(400).json({error:'invalid_request'});
  const start=Number(time.slice(0,2))*60+Number(time.slice(3)),end=start+Number(duration);
  const endTime=String(Math.floor(end/60)).padStart(2,'0')+':'+String(end%60).padStart(2,'0');
- let client;try{client=await pool.connect()}catch(e){return res.status(503).json({error:'unavailable'})}
+ if(!pool)return res.status(503).json({error:'database_not_configured'});let client;try{client=await pool.connect()}catch(e){return res.status(503).json({error:'unavailable'})}
  try{
   await client.query('BEGIN');
   await client.query('SELECT pg_advisory_xact_lock(hashtext($1))',[date]);
