@@ -86,7 +86,7 @@ app.post('/api/checkout',async(req,res)=>{
   const session=await stripe.checkout.sessions.create({
    mode:'payment',client_reference_id:id,
    line_items:[{price_data:{currency:'eur',unit_amount:booking.amount_cents,product_data:{name:'Massagem relaxante não sexual — '+booking.duration_minutes+' min'}},quantity:1}],
-   success_url:'https://lussan.onrender.com/?payment=processing',
+   success_url:'https://lussan.onrender.com/?payment=processing&session_id={CHECKOUT_SESSION_ID}',
    cancel_url:'https://lussan.onrender.com/?payment=cancelled',
    expires_at:Math.floor(Date.now()/1000)+1800
   },{idempotencyKey:'lussan-massage-'+id});
@@ -94,5 +94,17 @@ app.post('/api/checkout',async(req,res)=>{
   if(!saved.rowCount)return res.status(409).json({error:'booking_unavailable'});
   res.json({url:session.url});
  }catch(e){console.error('checkout error',e.message);res.status(503).json({error:'checkout_unavailable'})}
+});
+app.get('/api/payment-status',async(req,res)=>{
+ const id=String(req.query.session_id||'');
+ if(!/^cs_test_[a-zA-Z0-9]+$/.test(id)||!paymentReady())return res.status(400).json({verified:false});
+ try{
+  const session=await stripe.checkout.sessions.retrieve(id);
+  if(session.payment_status!=='paid')return res.json({verified:false,status:'pending'});
+  const result=await pool.query("SELECT id,status,duration_minutes,service_date,start_time FROM lussan_booking.appointments WHERE stripe_checkout_session_id=$1 AND id=$2",[id,session.client_reference_id]);
+  if(!result.rowCount)return res.status(404).json({verified:false});
+  const booking=result.rows[0];
+  return res.json({verified:booking.status==='confirmed',status:booking.status,date:booking.service_date,time:booking.start_time,duration:booking.duration_minutes});
+ }catch(e){console.error('payment status error',e.code||'unknown');return res.status(503).json({verified:false})}
 });
 app.listen(process.env.PORT||3000,()=>console.log('Lussan booking API listening'));
