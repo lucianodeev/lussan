@@ -14,6 +14,7 @@ app.post('/api/stripe-webhook',express.raw({type:'application/json'}),async(req,
  if(!paymentReady())return res.sendStatus(503);
  let event;
  try{event=stripe.webhooks.constructEvent(req.body,req.headers['stripe-signature'],process.env.STRIPE_WEBHOOK_SECRET)}catch(e){return res.sendStatus(400)}
+ if(await cartApi.webhook(event,res))return;
  const session=event.data.object;
  const photos=session.metadata?.order_type==='photos'&&session.metadata?.project==='lussan';
  const services=session.metadata?.order_type==='service'&&session.metadata?.project==='lussan';
@@ -72,6 +73,7 @@ app.get('/api/readiness',async(_req,res)=>{
  catch(e){const code=String(e.code||'');const category=code==='28P01'?'authentication':code==='3D000'?'database_name':code==='42P01'?'schema_or_table':code==='ENOTFOUND'?'dns':code==='ETIMEDOUT'||code==='ECONNREFUSED'?'network':/CERT|TLS|SSL|SELF_SIGNED/i.test(code+' '+e.message)?'tls_certificate':'connection_other';console.error('database readiness failure:',category,'code:',code||'unknown');return res.status(503).json(status)}
 });
 const serviceCatalog={"messages_20":{"name":"Conversa por mensagens no WhatsApp — 20 min","amount":1500,"kind":"online","duration":20},"messages_30":{"name":"Conversa por mensagens no WhatsApp — 30 min","amount":2000,"kind":"online","duration":30},"messages_60":{"name":"Conversa por mensagens no WhatsApp — 60 min","amount":3500,"kind":"online","duration":60},"voice_20":{"name":"Conversa por chamada de voz — 20 min","amount":2000,"kind":"online","duration":20},"voice_30":{"name":"Conversa por chamada de voz — 30 min","amount":2500,"kind":"online","duration":30},"voice_60":{"name":"Conversa por chamada de voz — 60 min","amount":4500,"kind":"online","duration":60},"video_20":{"name":"Videochamada — 20 min","amount":2500,"kind":"online","duration":20},"video_30":{"name":"Videochamada — 30 min","amount":3500,"kind":"online","duration":30},"video_60":{"name":"Videochamada — 60 min","amount":6000,"kind":"online","duration":60},"wax_underarms":{"name":"Depilação masculina com cera fria — Axilas","amount":1500,"kind":"physical"},"wax_shoulders":{"name":"Depilação masculina com cera fria — Ombros","amount":2000,"kind":"physical"},"wax_chest":{"name":"Depilação masculina com cera fria — Peito","amount":3500,"kind":"physical"},"wax_abdomen":{"name":"Depilação masculina com cera fria — Abdómen","amount":2500,"kind":"physical"},"wax_back":{"name":"Depilação masculina com cera fria — Costas","amount":3500,"kind":"physical"},"wax_arms":{"name":"Depilação masculina com cera fria — Braços completos","amount":3000,"kind":"physical"},"wax_legs":{"name":"Depilação masculina com cera fria — Pernas completas","amount":4500,"kind":"physical"},"wax_chest_abdomen":{"name":"Depilação masculina com cera fria — Peito + abdómen","amount":5000,"kind":"physical"}};
+const cartApi=require('./cart').initialize({app,pool,stripe,paymentReady,liveEnabled,services:serviceCatalog});
 app.post('/api/service-checkout',async(req,res)=>{
  if(!paymentReady())return res.status(503).json({error:'checkout_not_configured'});
  const sku=typeof req.body?.sku==='string'?req.body.sku:'';
@@ -162,6 +164,7 @@ app.get('/api/payment-status',async(req,res)=>{
   const session=await stripe.checkout.sessions.retrieve(id);
   if(session.livemode!==liveEnabled)return res.status(400).json({verified:false});
   if(session.payment_status!=='paid')return res.json({verified:false,status:'pending'});
+  if(await cartApi.status(session,res))return;
   if(session.metadata?.project==='lussan'&&session.metadata?.order_type==='service'){
    const result=await pool.query('SELECT sku,status,client_contact,request_details,amount_cents FROM lussan_booking.service_orders WHERE stripe_checkout_session_id=$1 AND id=$2',[id,session.client_reference_id]);
    if(!result.rowCount)return res.status(404).json({verified:false});const order=result.rows[0],item=serviceCatalog[order.sku];
