@@ -15,15 +15,25 @@ app.post('/api/stripe-webhook',express.raw({type:'application/json'}),async(req,
  let event;
  try{event=stripe.webhooks.constructEvent(req.body,req.headers['stripe-signature'],process.env.STRIPE_WEBHOOK_SECRET)}catch(e){return res.sendStatus(400)}
  const session=event.data.object;
+ const photos=session.metadata?.order_type==='photos'&&session.metadata?.project==='lussan';
+ if(!photos&&event.type.startsWith('checkout.session.')){
+  if(session.metadata?.project&&session.metadata.project!=='lussan')return res.json({received:true});
+  try{const own=await pool.query('SELECT 1 FROM lussan_booking.appointments WHERE stripe_checkout_session_id=$1',[session.id]);if(!own.rowCount)return res.json({received:true})}catch(e){return res.sendStatus(503)}
+ }
  if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type)&&session.payment_status==='paid'){
   if(session.livemode!==liveEnabled||session.currency!=='eur')return res.sendStatus(400);
   try{
+   if(photos){
+    const result=await pool.query("UPDATE lussan_booking.photo_orders SET status='confirmed',paid_at=now(),delivery_due_at=now()+interval '3 days' WHERE id=$1 AND stripe_checkout_session_id=$2 AND status='pending' AND amount_cents=$3 RETURNING id",[session.client_reference_id,session.id,session.amount_total]);
+    if(!result.rowCount){const already=await pool.query("SELECT 1 FROM lussan_booking.photo_orders WHERE id=$1 AND stripe_checkout_session_id=$2 AND status IN ('confirmed','delivered') AND amount_cents=$3",[session.client_reference_id,session.id,session.amount_total]);if(!already.rowCount)return res.sendStatus(409)}
+   }else{
    const result=await pool.query("UPDATE lussan_booking.appointments SET status='confirmed',paid_at=now() WHERE id=$1 AND stripe_checkout_session_id=$2 AND status='pending' AND amount_cents=$3 RETURNING id",[session.client_reference_id,session.id,session.amount_total]);
    if(!result.rowCount){const already=await pool.query("SELECT 1 FROM lussan_booking.appointments WHERE id=$1 AND stripe_checkout_session_id=$2 AND status='confirmed'",[session.client_reference_id,session.id]);if(!already.rowCount)return res.sendStatus(409)}
+   }
   }catch(e){return res.sendStatus(503)}
  }
  if(['checkout.session.expired','checkout.session.async_payment_failed'].includes(event.type)){
-  try{await pool.query("UPDATE lussan_booking.appointments SET status='cancelled' WHERE stripe_checkout_session_id=$1 AND status='pending'",[session.id])}catch(e){return res.sendStatus(503)}
+  try{const table=photos?'photo_orders':'appointments';await pool.query("UPDATE lussan_booking."+table+" SET status='cancelled' WHERE stripe_checkout_session_id=$1 AND status='pending'",[session.id])}catch(e){return res.sendStatus(503)}
  }
  res.json({received:true});
 });
@@ -57,7 +67,25 @@ app.get('/api/readiness',async(_req,res)=>{
  try{await pool.query('SELECT 1 FROM lussan_booking.appointments LIMIT 1');status.database='connected';return res.json(status)}
  catch(e){const code=String(e.code||'');const category=code==='28P01'?'authentication':code==='3D000'?'database_name':code==='42P01'?'schema_or_table':code==='ENOTFOUND'?'dns':code==='ETIMEDOUT'||code==='ECONNREFUSED'?'network':/CERT|TLS|SSL|SELF_SIGNED/i.test(code+' '+e.message)?'tls_certificate':'connection_other';console.error('database readiness failure:',category,'code:',code||'unknown');return res.status(503).json(status)}
 });
-app.post('/api/photo-checkout',(_req,res)=>res.status(503).json({error:'photo_payments_pending_processor_approval'}));
+const photoPrices={3:2000,5:3000,10:5000};
+app.post('/api/photo-checkout',async(req,res)=>{
+ if(!paymentReady())return res.status(503).json({error:'checkout_not_configured'});
+ const count=Number(req.body?.count),method=req.body?.deliveryMethod;
+ const contact=typeof req.body?.contact==='string'?req.body.contact.trim():'';
+ if(!photoPrices[count]||!['email','whatsapp'].includes(method)||contact.length>254||(method==='email'?!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact):!/^[+\d ()-]+$/.test(contact)||contact.replace(/\D/g,'').length<7||contact.replace(/\D/g,'').length>15))return res.status(400).json({error:'invalid_photo_order'});
+ let id;
+ try{
+  const result=await pool.query('INSERT INTO lussan_booking.photo_orders(package_count,amount_cents,delivery_method,delivery_contact) VALUES($1,$2,$3,$4) RETURNING id',[count,photoPrices[count],method,contact]);id=result.rows[0].id;
+  const session=await stripe.checkout.sessions.create({mode:'payment',client_reference_id:id,
+   metadata:{project:'lussan',order_type:'photos',package_count:String(count),delivery_method:method,delivery_contact:contact},
+   ...(method==='email'?{customer_email:contact}:{}),
+   line_items:[{price_data:{currency:'eur',unit_amount:photoPrices[count],product_data:{name:'Fotos — '+count+' fotos',description:'Entrega em até 3 dias após confirmação do pagamento, por link do Drive enviado por e-mail ou WhatsApp.'}},quantity:1}],
+   success_url:'https://lussan.onrender.com/?payment=processing&session_id={CHECKOUT_SESSION_ID}',cancel_url:'https://lussan.onrender.com/?payment=cancelled#private-photos',expires_at:Math.floor(Date.now()/1000)+1800
+  },{idempotencyKey:'lussan-photos-'+id});
+  await pool.query('UPDATE lussan_booking.photo_orders SET stripe_checkout_session_id=$1 WHERE id=$2',[session.id,id]);
+  return res.json({url:session.url});
+ }catch(e){if(id)try{await pool.query("UPDATE lussan_booking.photo_orders SET status='cancelled' WHERE id=$1 AND status='pending'",[id])}catch{};console.error('photo checkout error',e.code||e.type||'unknown');return res.status(503).json({error:'photo_checkout_unavailable'})}
+});
 app.get('/api/availability',async(req,res)=>{
  const {date}=req.query;
  if(!/^\d{4}-\d{2}-\d{2}$/.test(date||''))return res.status(400).json({error:'invalid_date'});
@@ -90,7 +118,7 @@ app.post('/api/checkout',async(req,res)=>{
   if(!booking||booking.status!=='pending')return res.status(409).json({error:'booking_unavailable'});
   if(booking.stripe_checkout_session_id)return res.status(409).json({error:'checkout_already_created'});
   const session=await stripe.checkout.sessions.create({
-   mode:'payment',client_reference_id:id,
+   mode:'payment',client_reference_id:id,metadata:{project:'lussan',order_type:'massage'},
    line_items:[{price_data:{currency:'eur',unit_amount:booking.amount_cents,product_data:{name:'Massagem — '+booking.duration_minutes+' min'}},quantity:1}],
    success_url:'https://lussan.onrender.com/?payment=processing&session_id={CHECKOUT_SESSION_ID}',
    cancel_url:'https://lussan.onrender.com/?payment=cancelled',
@@ -108,6 +136,11 @@ app.get('/api/payment-status',async(req,res)=>{
   const session=await stripe.checkout.sessions.retrieve(id);
   if(session.livemode!==liveEnabled)return res.status(400).json({verified:false});
   if(session.payment_status!=='paid')return res.json({verified:false,status:'pending'});
+  if(session.metadata?.project==='lussan'&&session.metadata?.order_type==='photos'){
+   const result=await pool.query('SELECT status,package_count,delivery_method,delivery_contact,delivery_due_at,amount_cents FROM lussan_booking.photo_orders WHERE stripe_checkout_session_id=$1 AND id=$2',[id,session.client_reference_id]);
+   if(!result.rowCount)return res.status(404).json({verified:false});const order=result.rows[0];
+   return res.json({kind:'photos',verified:['confirmed','delivered'].includes(order.status)&&order.amount_cents===session.amount_total&&session.currency==='eur',status:order.status,count:order.package_count,deliveryMethod:order.delivery_method,contact:order.delivery_contact,deliveryDueAt:order.delivery_due_at});
+  }
   const result=await pool.query("SELECT id,status,duration_minutes,service_date,start_time FROM lussan_booking.appointments WHERE stripe_checkout_session_id=$1 AND id=$2",[id,session.client_reference_id]);
   if(!result.rowCount)return res.status(404).json({verified:false});
   const booking=result.rows[0];
