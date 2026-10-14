@@ -16,14 +16,18 @@ app.post('/api/stripe-webhook',express.raw({type:'application/json'}),async(req,
  try{event=stripe.webhooks.constructEvent(req.body,req.headers['stripe-signature'],process.env.STRIPE_WEBHOOK_SECRET)}catch(e){return res.sendStatus(400)}
  const session=event.data.object;
  const photos=session.metadata?.order_type==='photos'&&session.metadata?.project==='lussan';
- if(!photos&&event.type.startsWith('checkout.session.')){
+ const services=session.metadata?.order_type==='service'&&session.metadata?.project==='lussan';
+ if(!photos&&!services&&event.type.startsWith('checkout.session.')){
   if(session.metadata?.project&&session.metadata.project!=='lussan')return res.json({received:true});
   try{const own=await pool.query('SELECT 1 FROM lussan_booking.appointments WHERE stripe_checkout_session_id=$1',[session.id]);if(!own.rowCount)return res.json({received:true})}catch(e){return res.sendStatus(503)}
  }
  if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type)&&session.payment_status==='paid'){
   if(session.livemode!==liveEnabled||session.currency!=='eur')return res.sendStatus(400);
   try{
-   if(photos){
+   if(services){
+    const result=await pool.query("UPDATE lussan_booking.service_orders SET status='confirmed',paid_at=now() WHERE id=$1 AND stripe_checkout_session_id=$2 AND status='pending' AND amount_cents=$3 RETURNING id",[session.client_reference_id,session.id,session.amount_total]);
+    if(!result.rowCount){const already=await pool.query("SELECT 1 FROM lussan_booking.service_orders WHERE id=$1 AND stripe_checkout_session_id=$2 AND status IN ('confirmed','fulfilled') AND amount_cents=$3",[session.client_reference_id,session.id,session.amount_total]);if(!already.rowCount)return res.sendStatus(409)}
+   }else if(photos){
     const result=await pool.query("UPDATE lussan_booking.photo_orders SET status='confirmed',paid_at=now(),delivery_due_at=now()+interval '3 days' WHERE id=$1 AND stripe_checkout_session_id=$2 AND status='pending' AND amount_cents=$3 RETURNING id",[session.client_reference_id,session.id,session.amount_total]);
     if(!result.rowCount){const already=await pool.query("SELECT 1 FROM lussan_booking.photo_orders WHERE id=$1 AND stripe_checkout_session_id=$2 AND status IN ('confirmed','delivered') AND amount_cents=$3",[session.client_reference_id,session.id,session.amount_total]);if(!already.rowCount)return res.sendStatus(409)}
    }else{
@@ -33,7 +37,7 @@ app.post('/api/stripe-webhook',express.raw({type:'application/json'}),async(req,
   }catch(e){return res.sendStatus(503)}
  }
  if(['checkout.session.expired','checkout.session.async_payment_failed'].includes(event.type)){
-  try{const table=photos?'photo_orders':'appointments';await pool.query("UPDATE lussan_booking."+table+" SET status='cancelled' WHERE stripe_checkout_session_id=$1 AND status='pending'",[session.id])}catch(e){return res.sendStatus(503)}
+  try{const table=services?'service_orders':photos?'photo_orders':'appointments';await pool.query("UPDATE lussan_booking."+table+" SET status='cancelled' WHERE stripe_checkout_session_id=$1 AND status='pending'",[session.id])}catch(e){return res.sendStatus(503)}
  }
  res.json({received:true});
 });
@@ -67,6 +71,26 @@ app.get('/api/readiness',async(_req,res)=>{
  try{await pool.query('SELECT 1 FROM lussan_booking.appointments LIMIT 1');status.database='connected';return res.json(status)}
  catch(e){const code=String(e.code||'');const category=code==='28P01'?'authentication':code==='3D000'?'database_name':code==='42P01'?'schema_or_table':code==='ENOTFOUND'?'dns':code==='ETIMEDOUT'||code==='ECONNREFUSED'?'network':/CERT|TLS|SSL|SELF_SIGNED/i.test(code+' '+e.message)?'tls_certificate':'connection_other';console.error('database readiness failure:',category,'code:',code||'unknown');return res.status(503).json(status)}
 });
+const serviceCatalog={"messages_20":{"name":"Conversa por mensagens no WhatsApp — 20 min","amount":1500,"kind":"online","duration":20},"messages_30":{"name":"Conversa por mensagens no WhatsApp — 30 min","amount":2000,"kind":"online","duration":30},"messages_60":{"name":"Conversa por mensagens no WhatsApp — 60 min","amount":3500,"kind":"online","duration":60},"voice_20":{"name":"Conversa por chamada de voz — 20 min","amount":2000,"kind":"online","duration":20},"voice_30":{"name":"Conversa por chamada de voz — 30 min","amount":2500,"kind":"online","duration":30},"voice_60":{"name":"Conversa por chamada de voz — 60 min","amount":4500,"kind":"online","duration":60},"video_20":{"name":"Videochamada — 20 min","amount":2500,"kind":"online","duration":20},"video_30":{"name":"Videochamada — 30 min","amount":3500,"kind":"online","duration":30},"video_60":{"name":"Videochamada — 60 min","amount":6000,"kind":"online","duration":60},"wax_underarms":{"name":"Depilação masculina com cera fria — Axilas","amount":1500,"kind":"physical"},"wax_shoulders":{"name":"Depilação masculina com cera fria — Ombros","amount":2000,"kind":"physical"},"wax_chest":{"name":"Depilação masculina com cera fria — Peito","amount":3500,"kind":"physical"},"wax_abdomen":{"name":"Depilação masculina com cera fria — Abdómen","amount":2500,"kind":"physical"},"wax_back":{"name":"Depilação masculina com cera fria — Costas","amount":3500,"kind":"physical"},"wax_arms":{"name":"Depilação masculina com cera fria — Braços completos","amount":3000,"kind":"physical"},"wax_legs":{"name":"Depilação masculina com cera fria — Pernas completas","amount":4500,"kind":"physical"},"wax_chest_abdomen":{"name":"Depilação masculina com cera fria — Peito + abdómen","amount":5000,"kind":"physical"}};
+app.post('/api/service-checkout',async(req,res)=>{
+ if(!paymentReady())return res.status(503).json({error:'checkout_not_configured'});
+ const sku=typeof req.body?.sku==='string'?req.body.sku:'';
+ if(!Object.hasOwn(serviceCatalog,sku))return res.status(400).json({error:'invalid_service'});
+ const contact=typeof req.body?.contact==='string'?req.body.contact.trim():'';
+ const details=typeof req.body?.details==='string'?req.body.details.trim():'';
+ if(details.length>1000||contact.length>100||!/^[+\d ()-]+$/.test(contact)||contact.replace(/\D/g,'').length<7||contact.replace(/\D/g,'').length>15)return res.status(400).json({error:'invalid_service_contact'});
+ const item=serviceCatalog[sku];let id;
+ try{
+  const result=await pool.query('INSERT INTO lussan_booking.service_orders(sku,amount_cents,client_contact,request_details) VALUES($1,$2,$3,$4) RETURNING id',[sku,item.amount,contact,details]);id=result.rows[0].id;
+  const session=await stripe.checkout.sessions.create({mode:'payment',client_reference_id:id,
+   metadata:{project:'lussan',order_type:'service',sku},
+   line_items:[{price_data:{currency:'eur',unit_amount:item.amount,product_data:{name:item.name,description:'Horário combinado pelo WhatsApp após confirmação do pagamento.'}},quantity:1}],
+   success_url:'https://lussan.onrender.com/?payment=processing&session_id={CHECKOUT_SESSION_ID}',cancel_url:'https://lussan.onrender.com/?payment=cancelled#service-order',expires_at:Math.floor(Date.now()/1000)+1800
+  },{idempotencyKey:'lussan-service-'+id});
+  await pool.query('UPDATE lussan_booking.service_orders SET stripe_checkout_session_id=$1 WHERE id=$2',[session.id,id]);return res.json({url:session.url});
+ }catch(e){if(id)try{await pool.query("UPDATE lussan_booking.service_orders SET status='cancelled' WHERE id=$1 AND status='pending'",[id])}catch{};console.error('service checkout error',e.code||e.type||'unknown');return res.status(503).json({error:'service_checkout_unavailable'})}
+});
+
 const photoPrices={3:2000,5:3000,10:5000};
 app.post('/api/photo-checkout',async(req,res)=>{
  if(!paymentReady())return res.status(503).json({error:'checkout_not_configured'});
@@ -138,6 +162,11 @@ app.get('/api/payment-status',async(req,res)=>{
   const session=await stripe.checkout.sessions.retrieve(id);
   if(session.livemode!==liveEnabled)return res.status(400).json({verified:false});
   if(session.payment_status!=='paid')return res.json({verified:false,status:'pending'});
+  if(session.metadata?.project==='lussan'&&session.metadata?.order_type==='service'){
+   const result=await pool.query('SELECT sku,status,client_contact,request_details,amount_cents FROM lussan_booking.service_orders WHERE stripe_checkout_session_id=$1 AND id=$2',[id,session.client_reference_id]);
+   if(!result.rowCount)return res.status(404).json({verified:false});const order=result.rows[0],item=serviceCatalog[order.sku];
+   return res.json({kind:'service',verified:Boolean(item)&&['confirmed','fulfilled'].includes(order.status)&&order.amount_cents===session.amount_total&&session.currency==='eur',status:order.status,serviceName:item?.name,contact:order.client_contact,details:order.request_details});
+  }
   if(session.metadata?.project==='lussan'&&session.metadata?.order_type==='photos'){
    const result=await pool.query('SELECT status,package_count,delivery_method,delivery_contact,request_details,delivery_due_at,amount_cents FROM lussan_booking.photo_orders WHERE stripe_checkout_session_id=$1 AND id=$2',[id,session.client_reference_id]);
    if(!result.rowCount)return res.status(404).json({verified:false});const order=result.rows[0];
