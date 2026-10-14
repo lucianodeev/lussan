@@ -5,7 +5,7 @@ const app=express();
 app.disable('x-powered-by');
 const Stripe=require('stripe');
 const stripe=process.env.STRIPE_SECRET_KEY?new Stripe(process.env.STRIPE_SECRET_KEY):null;
-const paymentReady=()=>Boolean(process.env.LUSSAN_PAYMENTS_APPROVED==='true'&&stripe&&process.env.STRIPE_WEBHOOK_SECRET&&process.env.DATABASE_URL);
+const paymentReady=()=>Boolean(stripe&&process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_')&&process.env.STRIPE_WEBHOOK_SECRET&&process.env.DATABASE_URL);
 app.post('/api/stripe-webhook',express.raw({type:'application/json'}),async(req,res)=>{
  if(!paymentReady())return res.sendStatus(503);
  let event;
