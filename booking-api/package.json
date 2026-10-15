@@ -3,7 +3,8 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test:private-admin": "node tests/private-admin.test.cjs"
   },
   "dependencies": {
     "express": "^4.21.2",
