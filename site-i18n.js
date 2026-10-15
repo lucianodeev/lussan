@@ -3,7 +3,7 @@
 const languages=['pt','fr','en','nl','es'];
 const rows={
 title:['Lussan | Presença, atenção e bem-estar em Bruxelas','Lussan | Présence, attention et bien-être à Bruxelles','Lussan | Presence, care and well-being in Brussels','Lussan | Aandacht en welzijn in Brussel','Lussan | Presencia, atención y bienestar en Bruselas'],
-description:['Conheça Lussan e Pedro, em Bruxelas. Fotografias, revista digital e experiências de bem-estar.','Découvrez Lussan et Pedro à Bruxelles. Photographies, magazine numérique et expériences de bien-être.','Meet Lussan and Pedro in Brussels. Photographs, a digital magazine and well-being experiences.','Ontmoet Lussan en Pedro in Brussel. Foto’s, een digitaal magazine en welzijnservaringen.','Conoce a Lussan y Pedro en Bruselas. Fotografías, revista digital y experiencias de bienestar.'],
+description:['Conheça Lussan e Pedro, em Bruxelas. Fotografias e experiências de bem-estar.','Découvrez Lussan et Pedro à Bruxelles. Photographies et expériences de bien-être.','Meet Lussan and Pedro in Brussels. Photographs and well-being experiences.','Ontmoet Lussan en Pedro in Brussel. Foto’s en welzijnservaringen.','Conoce a Lussan y Pedro en Bruselas. Fotografías y experiencias de bienestar.'],
 language:['Selecionar idioma','Choisir la langue','Choose language','Taal kiezen','Elegir idioma'],
 city:['Bruxelas','Bruxelles','Brussels','Brussel','Bruselas'],
 brand:['MASSAGEM · VIAGEM','MASSAGE · DÉPLACEMENT','MASSAGE · TRAVEL','MASSAGE · REIZEN','MASAJE · DESPLAZAMIENTO'],
@@ -108,7 +108,7 @@ function apply(){
   const notice=document.querySelector('#magazine-presale .magazineNotice:not([data-magazine])');if(notice){const strong=document.createElement('strong');strong.textContent=t('launchTitle');notice.replaceChildren(strong,document.createElement('br'),document.createTextNode(t('launchCopy')))}
   text('#magazine-launch-status','launchStatus');text('.magazineListFeatured small','magazineShortcut');attr('.magazineListFeatured button','aria-label','addMagazine');
   text('#magazineVerificationHeading','ageHeading');text('#cartMagazine section p:first-of-type','magazineAge');text('#cartMagazine section p:last-of-type','privateChannel');
-  text('#photosVerificationHeading','photoAgeHeading');text('#cartPhoto section p:first-of-type','photoAge');text('#cartPhoto section p:last-of-type','privateChannel');text('#cartPhoto section .cartField span','birth');text('#cartPhoto .ageCheck span','photoDeclaration');
+  text('#photosVerificationHeading','photoAgeHeading');text('#cartPhoto section p:first-of-type','photoAge');text('#cartPhoto [data-i18n=privateChannel]','privateChannel');text('#cartPhoto section .cartField span','birth');text('#cartPhoto .ageCheck span','photoDeclaration');
   text('#photoStyleLabel','photoWho');text('#photoInstructionsLabel','photoPreferences');attr('#cartPhotoInstructions','placeholder','photoPlaceholder');
   ['photoBoth','photoLussan','photoPedro','photoIndividual'].forEach((key,i)=>text('#cartPhotoStyle option:nth-child('+(i+1)+')',key));
   attr('#cartQuickDates','aria-label','dateSuggestions');document.querySelectorAll('#cartMagazineEmail,#cartPhotoEmail,#photoContact[type=email]').forEach(el=>el.placeholder='name@example.com');

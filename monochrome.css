@@ -95,3 +95,23 @@ h1,h2,h3{font-family:Georgia,'Times New Roman',serif;letter-spacing:.025em}
  .hero>div,.photoMagazineContent{min-width:0}
  .photoMagazineContent .btn{max-width:100%;white-space:normal}
 }
+
+/* Readability, touch targets and safe-area spacing without changing the palette. */
+.langs button{min-width:44px;min-height:44px}
+.cartField input,.cartField select,.cartField textarea{font-size:16px}
+.cartField,.cartSelect,.cartRow{min-width:0}
+#cartMessage,.box p,.copy{overflow-wrap:anywhere}
+@media(max-width:600px){
+ .langs{max-width:calc(100% - 16px);white-space:normal}
+ .hero .luxActions a,.galleryHighlight,.photoMagazineContent h2{overflow-wrap:anywhere}
+ .galleryHighlight{min-width:0;gap:10px}
+ .galleryHighlight>span{min-width:0}
+ .cartRow{flex-wrap:wrap}
+ .stickyGroup{bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+ footer{padding-bottom:calc(100px + env(safe-area-inset-bottom,0px))}
+}
+@media(prefers-reduced-motion:reduce){
+ html{scroll-behavior:auto}
+ .galleryHighlight{transition:none}
+ .galleryHighlight:hover{transform:none}
+}
