@@ -18,14 +18,23 @@ function buildCart(skus,services,allowRetired=false,travelPackage=false){
  if(skus.includes('wax_chest_abdomen')&&(skus.includes('wax_chest')||skus.includes('wax_abdomen')))throw Error('overlapping_wax');
  return {items,massage,photos,physicalMinutes,travel,total:items.reduce((n,x)=>n+x.amount,0)};
 }
+function itemName(item,locale){
+ const labels={pt:['Fotos','fotos','Massagem com Lussan & Pedro','Massagem com viagem até 100 km','LUSSAN & PEDRO MAGAZINE — Pré-venda da 1.ª edição digital (entrega futura)'],fr:['Photographies','photos','Massage avec Lussan & Pedro','Massage avec déplacement jusqu’à 100 km','LUSSAN & PEDRO MAGAZINE — Prévente de la première édition numérique (livraison future)'],en:['Photographs','photos','Massage with Lussan & Pedro','Massage with travel up to 100 km','LUSSAN & PEDRO MAGAZINE — First digital issue presale (future delivery)'],nl:['Foto’s','foto’s','Massage met Lussan & Pedro','Massage met reis tot 100 km','LUSSAN & PEDRO MAGAZINE — Voorverkoop eerste digitale editie (latere levering)'],es:['Fotografías','fotos','Masaje con Lussan y Pedro','Masaje con desplazamiento hasta 100 km','LUSSAN & PEDRO MAGAZINE — Preventa de la primera edición digital (entrega futura)']}[locale]||null;
+ if(!labels)return item.name;
+ if(item.sku==='magazine_presale')return labels[4];
+ if(/^photos_/.test(item.sku||''))return labels[0]+' — '+item.sku.split('_')[1]+' '+labels[1];
+ if(/^massage_/.test(item.sku||''))return labels[2]+' — '+item.sku.split('_')[1]+' min';
+ if(/^travel_/.test(item.sku||''))return labels[3]+' — '+Number(item.sku.split('_')[1])/60+'h';
+ return item.name;
+}
 function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
  const zone='Europe/Brussels';
  const stamp=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date()).replace(' ','T');
  const clean=(x,max)=>typeof x==='string'&&x.trim().length<=max?x.trim():'';
  const phone=x=>/^[+\d ()-]+$/.test(x)&&x.replace(/\D/g,'').length>=7&&x.replace(/\D/g,'').length<=15;
- const line=x=>({price_data:{currency:'eur',unit_amount:x.amount,product_data:{name:x.name}},quantity:1});
+ const line=(x,locale)=>({price_data:{currency:'eur',unit_amount:x.amount,product_data:{name:itemName(x,locale)}},quantity:1});
  const secure=(_,res,next)=>{res.setHeader('Cache-Control','no-store');res.setHeader('Referrer-Policy','no-referrer');next()};
- async function checkout(id,res){
+ async function checkout(id,res,selectedLocale){
   let client;let session;let created=false;try{
    client=await pool.connect();await client.query('BEGIN');
    const r=await client.query('SELECT * FROM lussan_booking.cart_orders WHERE id=$1 FOR UPDATE',[id]);const order=r.rows[0];
@@ -48,7 +57,8 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
     if(busy.rowCount)throw Error('slot_unavailable');
     const a=await client.query("INSERT INTO lussan_booking.appointments(service_date,start_time,end_time,duration_minutes,amount_cents,client_name,client_contact,status) VALUES($1,$2,$3,$4,$5,$6,$7,'pending') RETURNING id",[date,begin,finish,cart.massage||30,order.amount_cents,data.name,data.contact]);appointment=a.rows[0].id;
    }
-   session=await stripe.checkout.sessions.create({mode:'payment',client_reference_id:id,...(data.magazineEmail?{customer_email:data.magazineEmail}:{}),metadata:{project:'lussan',order_type:'cart'},line_items:[...cart.items,...costs].map(line),success_url:'https://lussan.onrender.com/?payment=processing&session_id={CHECKOUT_SESSION_ID}',cancel_url:'https://lussan.onrender.com/?payment=cancelled#cart',expires_at:Math.floor(Date.now()/1000)+1800},{idempotencyKey:'lussan-cart-'+id});
+   const locale=['pt','fr','en','nl','es'].includes(selectedLocale)?selectedLocale:['pt','fr','en','nl','es'].includes(data.locale)?data.locale:'auto';
+   session=await stripe.checkout.sessions.create({mode:'payment',locale,client_reference_id:id,...(data.magazineEmail?{customer_email:data.magazineEmail}:{}),metadata:{project:'lussan',order_type:'cart'},line_items:[...cart.items,...costs].map(x=>line(x,locale)),success_url:'https://lussan.onrender.com/?payment=processing&session_id={CHECKOUT_SESSION_ID}',cancel_url:'https://lussan.onrender.com/?payment=cancelled#cart',expires_at:Math.floor(Date.now()/1000)+1800},{idempotencyKey:'lussan-cart-'+id});
    created=true;
    if(appointment)await client.query('UPDATE lussan_booking.appointments SET stripe_checkout_session_id=$1 WHERE id=$2',[session.id,appointment]);
    await client.query("UPDATE lussan_booking.cart_orders SET status='pending',stripe_checkout_session_id=$1,appointment_id=$2 WHERE id=$3",[session.id,appointment||null,id]);
@@ -63,7 +73,7 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
   const b=req.body||{},name=clean(b.name,100),contact=clean(b.contact,100),details=clean(b.details,1000),location=b.location||'onsite';
   if(name.length<2||!phone(contact)||!['onsite','local','travel'].includes(location)||typeof b.details==='string'&&b.details.length>1000)return res.status(400).json({error:'invalid_contact'});
   if(cart.physicalMinutes>720)return res.status(400).json({error:'invalid_schedule'});
- const payload={skus:cart.items.map(x=>x.sku),name,contact,details,location,pricingVersion:2};
+ const payload={locale:['pt','fr','en','nl','es'].includes(b.locale)?b.locale:'auto',skus:cart.items.map(x=>x.sku),name,contact,details,location,pricingVersion:2};
   if(cart.items.some(x=>x.sku==='magazine_presale')){const email=clean(b.magazineEmail,254);if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return res.status(400).json({error:'invalid_magazine_email'});if(magazineError(b))return res.status(403).json({error:magazineError(b)});payload.magazineEmail=email;payload.magazineDeliveryStatus='awaiting_release_and_age_verification'}
   if(cart.photos){if(magazineError({birthDate:b.photoBirthDate,adultDeclaration:b.photoAdultDeclaration})==='adult_declaration_required')return res.status(403).json({error:'photo_adult_declaration_required'});payload.photoBirthDate=b.photoBirthDate;payload.photoAdultDeclaration=true;const method=b.photoMethod||'whatsapp',delivery=method==='whatsapp'?contact:clean(b.photoContact,254);if(!['email','whatsapp'].includes(method)||method==='email'&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(delivery)||details.length<3)return res.status(400).json({error:'invalid_photo_details'});payload.photoMethod=method;payload.photoContact=delivery}
   if(cart.physicalMinutes){
@@ -95,7 +105,7 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
  });
  app.post('/api/cart-quote-checkout',secure,async(req,res)=>{
   if(!paymentReady()||!/^[a-f0-9]{64}$/.test(req.body?.token||''))return res.sendStatus(400);
-  try{const r=await pool.query('SELECT id FROM lussan_booking.cart_orders WHERE quote_token=$1',[req.body.token]);if(!r.rowCount)return res.sendStatus(404);return checkout(r.rows[0].id,res)}catch(e){return res.sendStatus(503)}
+  try{const r=await pool.query('SELECT id FROM lussan_booking.cart_orders WHERE quote_token=$1',[req.body.token]);if(!r.rowCount)return res.sendStatus(404);return checkout(r.rows[0].id,res,req.body.locale)}catch(e){return res.sendStatus(503)}
  });
  async function webhook(event,res){
   const s=event.data.object;if(s.metadata?.project!=='lussan'||s.metadata?.order_type!=='cart')return false;
@@ -117,4 +127,5 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
  return {webhook,status};
 }
 module.exports={initialize,buildCart};
+
 
