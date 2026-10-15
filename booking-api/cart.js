@@ -1,5 +1,6 @@
 'use strict';
 const crypto=require('node:crypto');
+const {magazineError}=require('./age-policy');
 const massagePrices={30:8000,60:15000,90:22500,120:30000};
 function buildCart(skus,services,allowRetired=false,travelPackage=false){
  if(!Array.isArray(skus)||!skus.length||skus.length>12||new Set(skus).size!==skus.length)throw Error('invalid_cart');
@@ -29,6 +30,7 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
    client=await pool.connect();await client.query('BEGIN');
    const r=await client.query('SELECT * FROM lussan_booking.cart_orders WHERE id=$1 FOR UPDATE',[id]);const order=r.rows[0];
    if(!order||!['approved','pending'].includes(order.status)||new Date(order.valid_until)<=new Date())throw Error('quote_unavailable');
+   if(order.payload?.skus?.includes('magazine_presale')){await client.query('ROLLBACK');return res.status(403).json({error:'age_verification_unavailable'})}
    if(order.stripe_checkout_session_id){session=await stripe.checkout.sessions.retrieve(order.stripe_checkout_session_id);if(session.status!=='open')throw Error('checkout_unavailable');await client.query('COMMIT');return res.json({url:session.url})}
    const data=order.payload,cart=buildCart(data.skus,services,false,data.pricingVersion===2&&data.location==='travel');
    if(cart.travel&&(!Number.isFinite(data.confirmedDistanceKm)||data.confirmedDistanceKm<0||data.confirmedDistanceKm>100))throw Error('invalid_quote');
@@ -54,6 +56,7 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
   }catch(e){if(client)await client.query('ROLLBACK');if(created&&session?.id)try{await stripe.checkout.sessions.expire(session.id)}catch{};console.error('cart checkout:',e.code||e.message);return res.status(['slot_unavailable','invalid_schedule','quote_unavailable','checkout_unavailable','invalid_quote'].includes(e.message)?409:503).json({error:['slot_unavailable','invalid_schedule','quote_unavailable'].includes(e.message)?e.message:'checkout_unavailable'})}finally{client?.release()}
  }
  app.post('/api/cart',secure,async(req,res)=>{
+  if(Array.isArray(req.body?.skus)&&req.body.skus.includes('magazine_presale'))return res.status(403).json({error:magazineError(req.body)});
   if(!paymentReady())return res.status(503).json({error:'checkout_not_configured'});
   let cart;try{cart=buildCart(req.body?.skus,services,false,req.body?.location==='travel')}catch(e){return res.status(400).json({error:e.message})}
   const b=req.body||{},name=clean(b.name,100),contact=clean(b.contact,100),details=clean(b.details,1000),location=b.location||'onsite';
@@ -87,7 +90,7 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
  });
  app.get('/api/cart-quotes/:token',secure,async(req,res)=>{
   if(!/^[a-f0-9]{64}$/.test(req.params.token))return res.sendStatus(404);
-  try{const r=await pool.query('SELECT status,amount_cents,cost_items,payload,valid_until FROM lussan_booking.cart_orders WHERE quote_token=$1',[req.params.token]);const o=r.rows[0];if(!o)return res.sendStatus(404);return res.json({status:o.status,total:o.amount_cents,items:buildCart(o.payload.skus,services,true,o.payload.pricingVersion===2&&o.payload.location==='travel').items,costs:o.cost_items,date:o.payload.date,time:o.payload.time,location:o.payload.location,validUntil:o.valid_until,canPay:['approved','pending'].includes(o.status)&&new Date(o.valid_until)>new Date()})}catch(e){return res.sendStatus(503)}
+  try{const r=await pool.query('SELECT status,amount_cents,cost_items,payload,valid_until FROM lussan_booking.cart_orders WHERE quote_token=$1',[req.params.token]);const o=r.rows[0];if(!o)return res.sendStatus(404);return res.json({status:o.status,total:o.amount_cents,items:buildCart(o.payload.skus,services,true,o.payload.pricingVersion===2&&o.payload.location==='travel').items,costs:o.cost_items,date:o.payload.date,time:o.payload.time,location:o.payload.location,validUntil:o.valid_until,canPay:!o.payload.skus.includes('magazine_presale')&&['approved','pending'].includes(o.status)&&new Date(o.valid_until)>new Date()})}catch(e){return res.sendStatus(503)}
  });
  app.post('/api/cart-quote-checkout',secure,async(req,res)=>{
   if(!paymentReady()||!/^[a-f0-9]{64}$/.test(req.body?.token||''))return res.sendStatus(400);
