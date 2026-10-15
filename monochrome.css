@@ -89,3 +89,9 @@ h1,h2,h3{font-family:Georgia,'Times New Roman',serif;letter-spacing:.025em}
 .btn.wa,.photoMagazineButton,#cartSubmit,.visualReserve{background:#191919!important;color:#fff!important;border-color:#191919!important}
 .btn.wa:hover,.photoMagazineButton:hover,#cartSubmit:hover,.visualReserve:hover{background:#38332c!important}
 :focus-visible{outline:3px solid #9c8054!important}
+/* Keep the premium introduction visible on phones; an older service layout hid it. */
+@media(max-width:600px){
+ .hero{display:grid!important;min-width:0;max-width:100%}
+ .hero>div,.photoMagazineContent{min-width:0}
+ .photoMagazineContent .btn{max-width:100%;white-space:normal}
+}
