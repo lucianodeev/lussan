@@ -77,6 +77,12 @@ paidMessage:['Olá! Pagamento confirmado para Lussan & Pedro. Serviços: {items}
 toArrange:['A combinar','À convenir','To be arranged','In overleg','Por acordar'],
 photoDetails:['Fotografias: {style}. Preferências: {details}.','Photographies : {style}. Préférences : {details}.','Photographs: {style}. Preferences: {details}.','Foto’s: {style}. Voorkeuren: {details}.','Fotografías: {style}. Preferencias: {details}.']
 });
+Object.assign(rows,{
+videoQuoteCta:['Pedir orçamento de vídeo →','Demander un devis vidéo →','Request a video quote →','Video-offerte aanvragen →','Pedir presupuesto de vídeo →'],
+videoQuoteMessage:['Olá! Quero um orçamento de vídeo personalizado de Lussan e Pedro. Duração e estilo pretendidos: . Entrega por e-mail ou WhatsApp. Gostaria de confirmar o valor e a verificação de maioridade antes de pagar.','Bonjour ! Je souhaite un devis pour une vidéo personnalisée de Lussan et Pedro. Durée et style : . Livraison par e-mail ou WhatsApp. Merci de confirmer le prix et la vérification de majorité avant paiement.','Hello! I would like a quote for a personalized video of Lussan and Pedro. Preferred duration and style: . Delivery by email or WhatsApp. Please confirm the price and age verification before payment.','Hallo! Ik wil een offerte voor een persoonlijke video van Lussan en Pedro. Duur en stijl: . Levering per e-mail of WhatsApp. Graag de prijs en leeftijdscontrole bevestigen voor betaling.','¡Hola! Quiero presupuesto para un vídeo personalizado de Lussan y Pedro. Duración y estilo: . Entrega por correo o WhatsApp. Quisiera confirmar el precio y la verificación de edad antes de pagar.'],
+orderTitle:['Personalize o seu pedido','Personnalisez votre commande','Customize your order','Personaliseer je bestelling','Personaliza tu pedido'],
+orderIntro:['Escolha fotos, massagem ou viagem. Descreva as suas preferências; fotos por e-mail ou WhatsApp e transporte confirmado antes de pagar.','Choisissez des photos, un massage ou un déplacement. Précisez vos préférences ; photos par e-mail ou WhatsApp et transport confirmé avant paiement.','Choose photos, a massage or travel. Describe your preferences; photos by email or WhatsApp and transport confirmed before payment.','Kies foto’s, massage of reizen. Beschrijf je voorkeuren; foto’s per e-mail of WhatsApp en vervoer bevestigd vóór betaling.','Elige fotos, masaje o desplazamiento. Indica tus preferencias; fotos por correo o WhatsApp y transporte confirmado antes de pagar.']
+});
 const lang=()=>languages.includes(document.documentElement.lang)?document.documentElement.lang:'pt';
 function t(k,values={}){const row=rows[k];let text=row?row[languages.indexOf(lang())]:k;for(const [key,value] of Object.entries(values))text=text.replaceAll('{'+key+'}',String(value));return text}
 function show(el,key,values={}){if(!el)return;el.dataset.lussanMessage=key;el.dataset.lussanValues=JSON.stringify(values);el.textContent=t(key,values)}
@@ -89,6 +95,7 @@ function apply(){
  document.querySelectorAll('[data-lussan-message]').forEach(el=>el.textContent=t(el.dataset.lussanMessage,JSON.parse(el.dataset.lussanValues||'{}')));
  attr('nav.langs,#ageLanguage,#lussanLanguageSelector','aria-label','language');
  if(document.getElementById('cart')){
+  text('[data-cart-text="0"]','orderTitle');text('[data-cart-text="1"]','orderIntro');const video=document.getElementById('photoVideoButton');if(video)video.href='https://wa.me/32467633089?text='+encodeURIComponent(t('videoQuoteMessage'));
   document.title=t('title');document.querySelector('meta[name=description]')?.setAttribute('content',t('description'));
   attr('.contactNumbers','aria-label','whatsappContacts');attr('#bookingName','placeholder','name');
   for(const [id,key] of [['bookingName','name'],['bookingPhone','phone']]){const span=document.getElementById(id)?.closest('label')?.querySelector('span');if(span)span.textContent=t(key)}

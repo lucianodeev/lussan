@@ -68,7 +68,7 @@ function check(date,time,duration){
 }
 app.get('/health',(_,res)=>res.json({ok:true}));
 app.get('/api/readiness',async(_req,res)=>{
- const status={api:'ok',database:'unavailable',stripe_test:!liveEnabled&&paymentReady()?'configured':'not_ready',stripe_live:liveEnabled&&paymentReady()?'configured':'not_ready',live_payments:liveEnabled?'enabled':'disabled',configuration:{database_url:Boolean(process.env.DATABASE_URL),stripe_mode:stripeMode,stripe_key_valid:modeKey(),webhook_secret:Boolean(process.env.STRIPE_WEBHOOK_SECRET)}};
+ const status={api:'ok',database:'unavailable',stripe_test:!liveEnabled&&paymentReady()?'configured':'not_ready',stripe_live:liveEnabled&&paymentReady()?'configured':'not_ready',live_payments:liveEnabled?'enabled':'disabled',order_notifications:require('./order-notifications').ready()?'configured':'not_ready',configuration:{database_url:Boolean(process.env.DATABASE_URL),stripe_mode:stripeMode,stripe_key_valid:modeKey(),webhook_secret:Boolean(process.env.STRIPE_WEBHOOK_SECRET)}};
  if(!pool)return res.status(503).json(status);
  try{await pool.query('SELECT 1 FROM lussan_booking.appointments LIMIT 1');status.database='connected';return res.json(status)}
  catch(e){const code=String(e.code||'');const category=code==='28P01'?'authentication':code==='3D000'?'database_name':code==='42P01'?'schema_or_table':code==='ENOTFOUND'?'dns':code==='ETIMEDOUT'||code==='ECONNREFUSED'?'network':/CERT|TLS|SSL|SELF_SIGNED/i.test(code+' '+e.message)?'tls_certificate':'connection_other';console.error('database readiness failure:',category,'code:',code||'unknown');return res.status(503).json(status)}
@@ -95,26 +95,7 @@ app.post('/api/service-checkout',async(req,res)=>{
 });
 
 const photoPrices={3:2000,5:3000,10:5000};
-app.post('/api/photo-checkout',async(req,res)=>{
- if(!paymentReady())return res.status(503).json({error:'checkout_not_configured'});
- const count=Number(req.body?.count),method=req.body?.deliveryMethod;
- const contact=typeof req.body?.contact==='string'?req.body.contact.trim():'';
- const details=typeof req.body?.details==='string'?req.body.details.trim():'';
- if(details.length<3||details.length>1000)return res.status(400).json({error:'invalid_photo_details'});
- if(!photoPrices[count]||!['email','whatsapp'].includes(method)||contact.length>254||(method==='email'?!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact):!/^[+\d ()-]+$/.test(contact)||contact.replace(/\D/g,'').length<7||contact.replace(/\D/g,'').length>15))return res.status(400).json({error:'invalid_photo_order'});
- let id;
- try{
-  const result=await pool.query('INSERT INTO lussan_booking.photo_orders(package_count,amount_cents,delivery_method,delivery_contact,request_details) VALUES($1,$2,$3,$4,$5) RETURNING id',[count,photoPrices[count],method,contact,details]);id=result.rows[0].id;
-  const session=await stripe.checkout.sessions.create({mode:'payment',client_reference_id:id,
-   metadata:{project:'lussan',order_type:'photos',package_count:String(count),delivery_method:method,delivery_contact:contact},
-   ...(method==='email'?{customer_email:contact}:{}),
-   line_items:[{price_data:{currency:'eur',unit_amount:photoPrices[count],product_data:{name:'Fotos — '+count+' fotos',description:'Entrega em até 3 dias após confirmação do pagamento, por link do Drive enviado por e-mail ou WhatsApp.'}},quantity:1}],
-   success_url:'https://lussan.onrender.com/?payment=processing&session_id={CHECKOUT_SESSION_ID}',cancel_url:'https://lussan.onrender.com/?payment=cancelled#private-photos',expires_at:Math.floor(Date.now()/1000)+1800
-  },{idempotencyKey:'lussan-photos-'+id});
-  await pool.query('UPDATE lussan_booking.photo_orders SET stripe_checkout_session_id=$1 WHERE id=$2',[session.id,id]);
-  return res.json({url:session.url});
- }catch(e){if(id)try{await pool.query("UPDATE lussan_booking.photo_orders SET status='cancelled' WHERE id=$1 AND status='pending'",[id])}catch{};console.error('photo checkout error',e.code||e.type||'unknown');return res.status(503).json({error:'photo_checkout_unavailable'})}
-});
+app.post('/api/photo-checkout',(_req,res)=>res.status(410).json({error:'use_secure_cart',url:'https://lussan.onrender.com/#photo-request'}));
 app.get('/api/availability',async(req,res)=>{
  const {date}=req.query;
  if(!/^\d{4}-\d{2}-\d{2}$/.test(date||''))return res.status(400).json({error:'invalid_date'});
