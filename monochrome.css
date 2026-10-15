@@ -115,3 +115,14 @@ h1,h2,h3{font-family:Georgia,'Times New Roman',serif;letter-spacing:.025em}
  .galleryHighlight{transition:none}
  .galleryHighlight:hover{transform:none}
 }
+
+/* Uniform gallery frames follow the first two portraits; contain preserves every image. */
+#galeria .gallery img{
+ display:block;
+ width:100%;
+ height:auto!important;
+ aspect-ratio:3/4!important;
+ object-fit:contain;
+ object-position:center;
+ background:var(--lux-paper);
+}
