@@ -48,7 +48,7 @@ app.use((req,res,next)=>{
   res.setHeader('Access-Control-Allow-Origin',origin);
   res.setHeader('Vary','Origin');
   res.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers','Content-Type');
+  res.setHeader('Access-Control-Allow-Headers','Content-Type, Authorization');
  }
  if(req.method==='OPTIONS')return res.sendStatus(origin==='https://lussan.onrender.com'?204:403);
  next();
