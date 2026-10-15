@@ -181,4 +181,5 @@ app.get('/api/payment-status',async(req,res)=>{
   return res.json({verified:booking.status==='confirmed',status:booking.status,date:booking.service_date instanceof Date?new Intl.DateTimeFormat('en-CA',{timeZone:ZONE,year:'numeric',month:'2-digit',day:'2-digit'}).format(booking.service_date):booking.service_date,time:booking.start_time,duration:booking.duration_minutes});
  }catch(e){console.error('payment status error',e.code||'unknown');return res.status(503).json({verified:false})}
 });
+require('./verification-admin')(app,pool);
 app.listen(process.env.PORT||3000,()=>console.log('Lussan booking API listening'));
