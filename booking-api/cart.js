@@ -30,7 +30,7 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
    client=await pool.connect();await client.query('BEGIN');
    const r=await client.query('SELECT * FROM lussan_booking.cart_orders WHERE id=$1 FOR UPDATE',[id]);const order=r.rows[0];
    if(!order||!['approved','pending'].includes(order.status)||new Date(order.valid_until)<=new Date())throw Error('quote_unavailable');
-   if(order.payload?.skus?.includes('magazine_presale')&&magazineError(order.payload)){await client.query('ROLLBACK');return res.status(403).json({error:'adult_declaration_required'})}
+   if(order.payload?.skus?.includes('magazine_presale')){await client.query('ROLLBACK');return res.status(403).json({error:'age_verification_unavailable'})}
    if(order.stripe_checkout_session_id){session=await stripe.checkout.sessions.retrieve(order.stripe_checkout_session_id);if(session.status!=='open')throw Error('checkout_unavailable');await client.query('COMMIT');return res.json({url:session.url})}
    const data=order.payload,cart=buildCart(data.skus,services,false,data.pricingVersion===2&&data.location==='travel');
    if(cart.travel&&(!Number.isFinite(data.confirmedDistanceKm)||data.confirmedDistanceKm<0||data.confirmedDistanceKm>100))throw Error('invalid_quote');
@@ -56,14 +56,14 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
   }catch(e){if(client)await client.query('ROLLBACK');if(created&&session?.id)try{await stripe.checkout.sessions.expire(session.id)}catch{};console.error('cart checkout:',e.code||e.message);return res.status(['slot_unavailable','invalid_schedule','quote_unavailable','checkout_unavailable','invalid_quote'].includes(e.message)?409:503).json({error:['slot_unavailable','invalid_schedule','quote_unavailable'].includes(e.message)?e.message:'checkout_unavailable'})}finally{client?.release()}
  }
  app.post('/api/cart',secure,async(req,res)=>{
-  if(Array.isArray(req.body?.skus)&&req.body.skus.includes('magazine_presale')&&magazineError(req.body))return res.status(403).json({error:magazineError(req.body)});
+  if(Array.isArray(req.body?.skus)&&req.body.skus.includes('magazine_presale'))return res.status(403).json({error:magazineError(req.body)});
   if(!paymentReady())return res.status(503).json({error:'checkout_not_configured'});
   let cart;try{cart=buildCart(req.body?.skus,services,false,req.body?.location==='travel')}catch(e){return res.status(400).json({error:e.message})}
   const b=req.body||{},name=clean(b.name,100),contact=clean(b.contact,100),details=clean(b.details,1000),location=b.location||'onsite';
   if(name.length<2||!phone(contact)||!['onsite','local','travel'].includes(location)||typeof b.details==='string'&&b.details.length>1000)return res.status(400).json({error:'invalid_contact'});
   if(cart.physicalMinutes>720)return res.status(400).json({error:'invalid_schedule'});
  const payload={skus:cart.items.map(x=>x.sku),name,contact,details,location,pricingVersion:2};
-  if(cart.items.some(x=>x.sku==='magazine_presale')){const email=clean(b.magazineEmail,254);if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return res.status(400).json({error:'invalid_magazine_email'});payload.magazineEmail=email;payload.birthDate=b.birthDate;payload.adultDeclaration=true;payload.magazineDeliveryStatus='awaiting_publication_and_identity_verification'}
+  if(cart.items.some(x=>x.sku==='magazine_presale')){const email=clean(b.magazineEmail,254);if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return res.status(400).json({error:'invalid_magazine_email'});payload.magazineEmail=email}
   if(cart.photos){const method=b.photoMethod||'whatsapp',delivery=method==='whatsapp'?contact:clean(b.photoContact,254);if(!['email','whatsapp'].includes(method)||method==='email'&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(delivery)||details.length<3)return res.status(400).json({error:'invalid_photo_details'});payload.photoMethod=method;payload.photoContact=delivery}
   if(cart.physicalMinutes){
    if(typeof b.date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(b.date)||Number.isNaN(Date.parse(b.date))||new Date(b.date).toISOString().slice(0,10)!==b.date||!/^([01]\d|2[0-3]):(00|30)$/.test(b.time||''))return res.status(400).json({error:'invalid_schedule'});
