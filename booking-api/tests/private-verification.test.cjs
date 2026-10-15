@@ -4,6 +4,7 @@ process.env.LUSSAN_VERIFICATION_FILE_KEY=crypto.randomBytes(32).toString('hex');
 const vf=require('../verification-files'),{isAdult,magazineError}=require('../age-policy');
 const png={type:'image/png',data:'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aGTkAAAAASUVORK5CYII='};
 const bytes=vf.image(png).bytes;
+const maxImage=Buffer.alloc(4*1024*1024);maxImage[0]=255;maxImage[1]=216;maxImage[2]=255;maxImage[maxImage.length-2]=255;maxImage[maxImage.length-1]=217;assert.equal(vf.image({type:'image/jpeg',data:maxImage.toString('base64')}).bytes.length,maxImage.length);assert.throws(()=>vf.image({type:'image/jpeg',data:Buffer.alloc(maxImage.length+1).toString('base64')}));
 assert.throws(()=>vf.image({type:'text/html',data:png.data}));assert.throws(()=>vf.image({type:'image/png',data:Buffer.from('this is not an image').toString('base64')}));
 const encrypted=vf.encrypt(bytes,'order:document');assert(!encrypted.includes(bytes));assert.deepEqual(vf.decrypt(encrypted,'order:document'),bytes);assert.throws(()=>vf.decrypt(encrypted,'order:selfie'));const bad=Buffer.from(encrypted);bad[30]^=1;assert.throws(()=>vf.decrypt(bad,'order:document'));
 assert.equal(isAdult('2015-01-01'),false);assert.equal(isAdult('2000-02-31'),false);assert.equal(magazineError({birthDate:'2000-01-01',adultDeclaration:true}),null);assert.equal(magazineError({birthDate:'2015-01-01',adultDeclaration:true}),'adult_declaration_required');

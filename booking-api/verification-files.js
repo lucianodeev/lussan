@@ -1,13 +1,13 @@
 'use strict';
 const crypto=require('node:crypto');
-const MAX=4*1024*1024,days=30,attempts=new Map();
+const MAX=4*1024*1024,attempts=new Map();
 const configured=()=>/^[a-f0-9]{64}$/i.test(process.env.LUSSAN_VERIFICATION_FILE_KEY||'');
 const key=()=>Buffer.from(process.env.LUSSAN_VERIFICATION_FILE_KEY,'hex');
 function encrypt(bytes,aad){const iv=crypto.randomBytes(12),c=crypto.createCipheriv('aes-256-gcm',key(),iv);c.setAAD(Buffer.from(aad));const body=Buffer.concat([c.update(bytes),c.final()]);return Buffer.concat([iv,c.getAuthTag(),body])}
 function decrypt(bytes,aad){const d=crypto.createDecipheriv('aes-256-gcm',key(),bytes.subarray(0,12));d.setAuthTag(bytes.subarray(12,28));d.setAAD(Buffer.from(aad));return Buffer.concat([d.update(bytes.subarray(28)),d.final()])}
 function image(file){
- if(!file||!['image/jpeg','image/png'].includes(file.type)||typeof file.data!=='string'||file.data.length>Math.ceil(MAX/3)*4||!/^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(file.data))throw Error('invalid_files');
- const b=Buffer.from(file.data,'base64');if(b.length<20||b.length>MAX)throw Error('invalid_files');
+ if(!file||!['image/jpeg','image/png'].includes(file.type)||typeof file.data!=='string'||file.data.length>Math.ceil(MAX/3)*4||file.data.length%4!==0||!/^[A-Za-z0-9+/]*={0,2}$/.test(file.data))throw Error('invalid_files');
+ const b=Buffer.from(file.data,'base64');if(b.length<20||b.length>MAX||b.toString('base64')!==file.data)throw Error('invalid_files');
  const valid=file.type==='image/png'?b.subarray(0,8).equals(Buffer.from('89504e470d0a1a0a','hex')):b[0]===255&&b[1]===216&&b[2]===255&&b[b.length-2]===255&&b[b.length-1]===217;
  if(!valid)throw Error('invalid_files');return {bytes:b,type:file.type};
 }
