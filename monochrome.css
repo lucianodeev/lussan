@@ -1,8 +1,8 @@
 /* Lussan monochrome theme. Image sources, filters, layout and dimensions are unchanged. */
-:root{--gold:#171717;--cream:#171717;--muted:#555;--green:#171717;color-scheme:light}
-body{background:#fff!important;color:#171717!important}
-h1,h2,h3,h4{color:#171717}
-section,.gallery img,.heroPortrait img{border-color:#ddd!important}
+:root{--gold:#342d28;--cream:#342d28;--muted:#6b5b4b;--green:#342d28;color-scheme:light}
+body{background:#fffcf7!important;color:#342d28!important}
+h1,h2,h3,h4{color:#342d28}
+section,.gallery img,.heroPortrait img{border-color:#d9cbb8!important}
 .copy,.muted,.eyebrow,.step b,.priceItem strong,.photoOption small,.lussanBrand small,
 .visualServices>p,.visualCards small,.visualDurations strong,.visualTravel small,
 .quickBuy small,.quickBuyGrid strong,.photoMagazineEdition,.photoMagazineContent .copy,
@@ -10,84 +10,84 @@ section,.gallery img,.heroPortrait img{border-color:#ddd!important}
 .magazinePresale p,.magazineSale span,.magazineSale small,.magazinePresale .magazineNotice,
 .magazineListFeatured small,.magazineListFeatured strong,.cartTotal,#cartAgeNote,
 #cartMessage,#cartMagazine p,#cartMagazine strong,#cartPhoto p,#cartPhoto strong,
-#magazine-launch-status,#status,footer{color:#444!important}
-.langs{background:rgba(255,255,255,.97)!important;border-color:#ddd!important;box-shadow:0 3px 16px #0000000d}
-.langs button{background:transparent!important;color:#555!important}
-.langs button.on,.langs button[aria-pressed=true]{background:#171717!important;color:#fff!important}
-.pill,.contactNumber,.outline{background:#fff!important;color:#171717!important;border-color:#ddd!important}
-.contactNumber:hover,.outline:hover{background:#f5f5f5!important;border-color:#171717!important}
+#magazine-launch-status,#status,footer{color:#5e5145!important}
+.langs{background:rgba(255,252,247,.97)!important;border-color:#d9cbb8!important;box-shadow:0 3px 16px #0000000d}
+.langs button{background:transparent!important;color:#6b5b4b!important}
+.langs button.on,.langs button[aria-pressed=true]{background:#79634b!important;color:#fff!important}
+.pill,.contactNumber,.outline{background:#fffcf7!important;color:#342d28!important;border-color:#d9cbb8!important}
+.contactNumber:hover,.outline:hover{background:#eee4d7!important;border-color:#342d28!important}
 .btn.wa,.sticky,.instagramHighlight,.photoMiniCta,.visualReserve,.magazineSale button,
 .photoMagazineButton,#cartSubmit,#cartQuote button,#send,#ageGate #ageEnter{
- background:#171717!important;color:#fff!important;border-color:#171717!important;
+ background:#79634b!important;color:#fff!important;border-color:#342d28!important;
  box-shadow:0 5px 18px #00000012!important
 }
 .btn.wa:hover,.sticky:hover,.instagramHighlight:hover,.visualReserve:hover,
-.magazineSale button:hover,.photoMagazineButton:hover,#send:hover,#cartSubmit:hover{background:#333!important}
+.magazineSale button:hover,.photoMagazineButton:hover,#send:hover,#cartSubmit:hover{background:#554637!important}
 .person,.step,.priceItem,.booking,.quickBuy,.visualHero,.visualCards button,
 .visualDurations button,.visualTravel,.photoMagazine,.magazinePresale,.magazineListFeatured button,
 .cartRowMagazine,.photoOption:has(input:checked){
- background:#f5f5f5!important;color:#171717!important;border-color:#ddd!important
+ background:#eee4d7!important;color:#342d28!important;border-color:#d9cbb8!important
 }
 .booking,.photoMagazine,.magazinePresale{box-shadow:0 8px 28px #00000008!important}
 .photoMagazineContent h2,.magazinePresale h2,.visualHero p,.visualTravel button,
-.visualCards b,.magazineListFeatured button,.cartRowMagazine{color:#171717!important}
-.visualCards button:first-child,.magazineListFeatured button,.cartRowMagazine{border-color:#171717!important}
-.visualTravel button{background:#fff!important;border-color:#ddd!important}
-.visualTravel button:hover,.visualDurations button:hover{background:#eaeaea!important;border-color:#171717!important}
-.quickBuyGrid button{background:#fff!important;color:#171717!important;border-color:#ddd!important}
-.quickBuyGrid button.quickRecommended{border-color:#171717!important;background:#f5f5f5!important;box-shadow:0 0 0 2px #17171710!important}
-.quickBuyGrid em,.quickRecommendedLabel{background:#171717!important;color:#fff!important}
-.photoMagazineRule{background:#171717!important}
+.visualCards b,.magazineListFeatured button,.cartRowMagazine{color:#342d28!important}
+.visualCards button:first-child,.magazineListFeatured button,.cartRowMagazine{border-color:#342d28!important}
+.visualTravel button{background:#fffcf7!important;border-color:#d9cbb8!important}
+.visualTravel button:hover,.visualDurations button:hover{background:#e5d8c5!important;border-color:#342d28!important}
+.quickBuyGrid button{background:#fffcf7!important;color:#342d28!important;border-color:#d9cbb8!important}
+.quickBuyGrid button.quickRecommended{border-color:#342d28!important;background:#eee4d7!important;box-shadow:0 0 0 2px #17171710!important}
+.quickBuyGrid em,.quickRecommendedLabel{background:#79634b!important;color:#fff!important}
+.photoMagazineRule{background:#79634b!important}
 .photoMagazineStamp,.photoMagazineStamp span{color:#fff!important}
-.photoFeaturedOffers a{background:#fff!important;color:#171717!important;border-color:#ddd!important}
-.photoFeaturedOffers span{color:#171717!important}
-.photoFeaturedOffers a:hover,.photoFeaturedOffers a:focus{background:#eaeaea!important;border-color:#171717!important}
-.magazineSale{border-color:#ddd!important}
-.magazinePresale .magazineNotice,#cartMagazine section,#cartPhoto section{background:#fff!important;border-color:#ddd!important;color:#444!important}
-.magCover{background:#fff!important;color:#171717!important;border-color:#ddd!important;box-shadow:0 12px 32px #00000012!important}
-.magCoverMasthead{background:#fff!important;color:#171717!important}
-.magCoverMasthead small,.magCoverMasthead em,.magCoverMasthead strong{color:#171717!important}
-.magCoverPhoto{background:#171717!important}
+.photoFeaturedOffers a{background:#fffcf7!important;color:#342d28!important;border-color:#d9cbb8!important}
+.photoFeaturedOffers span{color:#342d28!important}
+.photoFeaturedOffers a:hover,.photoFeaturedOffers a:focus{background:#e5d8c5!important;border-color:#342d28!important}
+.magazineSale{border-color:#d9cbb8!important}
+.magazinePresale .magazineNotice,#cartMagazine section,#cartPhoto section{background:#fffcf7!important;border-color:#d9cbb8!important;color:#5e5145!important}
+.magCover{background:#fffcf7!important;color:#342d28!important;border-color:#d9cbb8!important;box-shadow:0 12px 32px #00000012!important}
+.magCoverMasthead{background:#fffcf7!important;color:#342d28!important}
+.magCoverMasthead small,.magCoverMasthead em,.magCoverMasthead strong{color:#342d28!important}
+.magCoverPhoto{background:#79634b!important}
 .magCoverPhotoShade{background:linear-gradient(transparent,rgba(0,0,0,.6) 60%,#000 100%)!important}
 .magCoverCopy span,.magCoverCopy h3,.magCoverCopy p,.magCoverTeasers span{color:#fff!important}
 .magCoverTeasers{border-color:#ffffff66!important}
-.magCoverBottom{background:#f5f5f5!important;color:#171717!important;border-color:#ddd!important}
-.magCoverBottom strong{color:#171717!important}
+.magCoverBottom{background:#eee4d7!important;color:#342d28!important;border-color:#d9cbb8!important}
+.magCoverBottom strong{color:#342d28!important}
 .cartField input,.cartField select,.cartField textarea,.cartSelect select,
 #cartPicker.magazinePickerSelected,#cartPicker option[value=magazine_presale],
 #ageGate select,#lussanLanguageSelector{
- background:#fff!important;color:#171717!important;border-color:#ccc!important
+ background:#fffcf7!important;color:#342d28!important;border-color:#c7b69e!important
 }
 .cartField input::placeholder,.cartField textarea::placeholder{color:#6b6b6b!important;opacity:1}
-input[type=checkbox],input[type=radio]{accent-color:#171717!important}
-.cartRow button,.cartRowMagazine button,#cartQuickDates button{background:#fff!important;color:#171717!important;border-color:#ccc!important;outline-color:#171717!important}
-.cartRow button:hover,.cartRowMagazine button:hover,#cartQuickDates button:hover{background:#eaeaea!important}
-#ageGate{background:#fff!important}
-#ageGate .ageCard{background:#f5f5f5!important;color:#171717!important;border-color:#ddd!important;box-shadow:0 10px 35px #0000000d}
-#ageGate #ageLeave{background:#fff!important;color:#171717!important;border-color:#ccc!important}
-.box{background:#f5f5f5!important;border-color:#ddd!important}
-.box p,.box small,body>small{color:#444!important}
-body>a,body>p>a{color:#171717!important}
+input[type=checkbox],input[type=radio]{accent-color:#342d28!important}
+.cartRow button,.cartRowMagazine button,#cartQuickDates button{background:#fffcf7!important;color:#342d28!important;border-color:#c7b69e!important;outline-color:#342d28!important}
+.cartRow button:hover,.cartRowMagazine button:hover,#cartQuickDates button:hover{background:#e5d8c5!important}
+#ageGate{background:#fffcf7!important}
+#ageGate .ageCard{background:#eee4d7!important;color:#342d28!important;border-color:#d9cbb8!important;box-shadow:0 10px 35px #0000000d}
+#ageGate #ageLeave{background:#fffcf7!important;color:#342d28!important;border-color:#c7b69e!important}
+.box{background:#eee4d7!important;border-color:#d9cbb8!important}
+.box p,.box small,body>small{color:#5e5145!important}
+body>a,body>p>a{color:#342d28!important}
 :focus-visible{outline:3px solid #666!important;outline-offset:3px}
 
 /* Premium editorial palette: ivory, charcoal and restrained champagne accents. */
-:root{--lux-ink:#191919;--lux-champagne:#b49a72;--lux-paper:#faf9f6}
+:root{--lux-ink:#342d28;--lux-champagne:#b49a72;--lux-paper:#f3ede4}
 body{background:var(--lux-paper)!important}
 h1,h2,h3{font-family:Georgia,'Times New Roman',serif;letter-spacing:.025em}
 .hero .luxKicker{color:#78613d!important}
-.hero .luxIntro{color:#333!important}
+.hero .luxIntro{color:#554637!important}
 .hero .luxAmp{color:#8a7048!important}
-.hero .luxActions a{background:#191919!important;color:#fff!important;border-color:#191919!important}
-.hero .luxActions a.secondary{background:transparent!important;color:#191919!important;border-color:#8a7048!important}
-.hero .luxActions a:hover{background:#3a342d!important;color:#fff!important}
-.hero .luxActions a.secondary:hover{background:#eee9df!important;color:#191919!important}
-#duo .luxuryDuo .person{background:#fff!important;border:1px solid #e1d9cd!important;box-shadow:0 10px 28px #0000000b}
-#duo .luxuryDuo h3{color:#191919!important}
+.hero .luxActions a{background:#79634b!important;color:#fff!important;border-color:#342d28!important}
+.hero .luxActions a.secondary{background:transparent!important;color:#342d28!important;border-color:#8a7048!important}
+.hero .luxActions a:hover{background:#65503c!important;color:#fff!important}
+.hero .luxActions a.secondary:hover{background:#e8dccb!important;color:#342d28!important}
+#duo .luxuryDuo .person{background:#fffcf7!important;border:1px solid #d9cbb8!important;box-shadow:0 10px 28px #0000000b}
+#duo .luxuryDuo h3{color:#342d28!important}
 #duo .luxuryDuo .person img{filter:grayscale(12%)}
-#galeria .gallery img{border:1px solid #e1d9cd!important}
-.booking,.photoMagazine,.person,.step,.priceItem{background:#fff!important;border-color:#e1d9cd!important}
-.btn.wa,.photoMagazineButton,#cartSubmit,.visualReserve{background:#191919!important;color:#fff!important;border-color:#191919!important}
-.btn.wa:hover,.photoMagazineButton:hover,#cartSubmit:hover,.visualReserve:hover{background:#38332c!important}
+#galeria .gallery img{border:1px solid #d9cbb8!important}
+.booking,.photoMagazine,.person,.step,.priceItem{background:#fffcf7!important;border-color:#d9cbb8!important}
+.btn.wa,.photoMagazineButton,#cartSubmit,.visualReserve{background:#79634b!important;color:#fff!important;border-color:#342d28!important}
+.btn.wa:hover,.photoMagazineButton:hover,#cartSubmit:hover,.visualReserve:hover{background:#65503c!important}
 :focus-visible{outline:3px solid #9c8054!important}
 /* Keep the premium introduction visible on phones; an older service layout hid it. */
 @media(max-width:600px){
