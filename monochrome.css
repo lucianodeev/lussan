@@ -69,3 +69,23 @@ input[type=checkbox],input[type=radio]{accent-color:#171717!important}
 .box p,.box small,body>small{color:#444!important}
 body>a,body>p>a{color:#171717!important}
 :focus-visible{outline:3px solid #666!important;outline-offset:3px}
+
+/* Premium editorial palette: ivory, charcoal and restrained champagne accents. */
+:root{--lux-ink:#191919;--lux-champagne:#b49a72;--lux-paper:#faf9f6}
+body{background:var(--lux-paper)!important}
+h1,h2,h3{font-family:Georgia,'Times New Roman',serif;letter-spacing:.025em}
+.hero .luxKicker{color:#78613d!important}
+.hero .luxIntro{color:#333!important}
+.hero .luxAmp{color:#8a7048!important}
+.hero .luxActions a{background:#191919!important;color:#fff!important;border-color:#191919!important}
+.hero .luxActions a.secondary{background:transparent!important;color:#191919!important;border-color:#8a7048!important}
+.hero .luxActions a:hover{background:#3a342d!important;color:#fff!important}
+.hero .luxActions a.secondary:hover{background:#eee9df!important;color:#191919!important}
+#duo .luxuryDuo .person{background:#fff!important;border:1px solid #e1d9cd!important;box-shadow:0 10px 28px #0000000b}
+#duo .luxuryDuo h3{color:#191919!important}
+#duo .luxuryDuo .person img{filter:grayscale(12%)}
+#galeria .gallery img{border:1px solid #e1d9cd!important}
+.booking,.photoMagazine,.person,.step,.priceItem{background:#fff!important;border-color:#e1d9cd!important}
+.btn.wa,.photoMagazineButton,#cartSubmit,.visualReserve{background:#191919!important;color:#fff!important;border-color:#191919!important}
+.btn.wa:hover,.photoMagazineButton:hover,#cartSubmit:hover,.visualReserve:hover{background:#38332c!important}
+:focus-visible{outline:3px solid #9c8054!important}
