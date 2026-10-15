@@ -3,7 +3,7 @@ const api='https://lussan-booking-api.onrender.com',base='https://lcvuuqtdboucay
 const notice=document.getElementById('notice'),form=document.getElementById('login'),queue=document.getElementById('queue');
 const resetForm=document.getElementById('reset');
 document.getElementById('forgot').onclick=async()=>{
- const email=document.getElementById('email').value.trim();if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)){notice.textContent='Informe o seu e-mail para recuperar a senha.';return}
+ const email=document.getElementById('email').value.trim();if(!email.includes('@')||!email.split('@')[1]?.includes('.')){notice.textContent='Introduza um e-mail válido.';return}
  notice.textContent='A solicitar recuperação…';
  try{const response=await fetch(base+'/auth/v1/recover?redirect_to='+encodeURIComponent('https://lussan.onrender.com/verificacoes.html'),{method:'POST',headers:{apikey:key,'Content-Type':'application/json'},body:JSON.stringify({email})});if(!response.ok)throw Error('Falha no envio. Verifique a configuração de e-mail do Supabase.');notice.textContent='Se o e-mail estiver registado, receberá um link para criar uma nova senha. Verifique também o spam.'}catch(e){notice.textContent=e.message}
 };
