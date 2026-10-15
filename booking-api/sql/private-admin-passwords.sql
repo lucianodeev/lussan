@@ -14,3 +14,11 @@ CREATE TABLE lussan_booking.private_admin_password_resets (
 ALTER TABLE lussan_booking.private_admin_credentials ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lussan_booking.private_admin_password_resets ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON lussan_booking.private_admin_credentials,lussan_booking.private_admin_password_resets FROM PUBLIC,anon,authenticated;
+-- Backend-only grants, matching the dedicated database role used by the API.
+GRANT SELECT,INSERT,UPDATE ON lussan_booking.private_admin_credentials TO lussan_booking_api;
+GRANT SELECT,INSERT,UPDATE,DELETE ON lussan_booking.private_admin_password_resets TO lussan_booking_api;
+CREATE POLICY lussan_private_admin_backend ON lussan_booking.private_admin_credentials TO lussan_booking_api USING (true) WITH CHECK (true);
+CREATE POLICY lussan_private_admin_backend ON lussan_booking.private_admin_password_resets TO lussan_booking_api USING (true) WITH CHECK (true);
+GRANT SELECT ON lussan_booking.photo_verifications,lussan_booking.magazine_verifications TO lussan_booking_api;
+CREATE POLICY lussan_private_admin_queue_read ON lussan_booking.photo_verifications FOR SELECT TO lussan_booking_api USING (true);
+CREATE POLICY lussan_private_admin_queue_read ON lussan_booking.magazine_verifications FOR SELECT TO lussan_booking_api USING (true);
