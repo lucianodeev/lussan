@@ -1,0 +1,71 @@
+/* Lussan monochrome theme. Image sources, filters, layout and dimensions are unchanged. */
+:root{--gold:#171717;--cream:#171717;--muted:#555;--green:#171717;color-scheme:light}
+body{background:#fff!important;color:#171717!important}
+h1,h2,h3,h4{color:#171717}
+section,.gallery img,.heroPortrait img{border-color:#ddd!important}
+.copy,.muted,.eyebrow,.step b,.priceItem strong,.photoOption small,.lussanBrand small,
+.visualServices>p,.visualCards small,.visualDurations strong,.visualTravel small,
+.quickBuy small,.quickBuyGrid strong,.photoMagazineEdition,.photoMagazineContent .copy,
+.photoMagazineFeatures,.photoMagazineFoot,.magazineEyebrow,.magazineTopics,
+.magazinePresale p,.magazineSale span,.magazineSale small,.magazinePresale .magazineNotice,
+.magazineListFeatured small,.magazineListFeatured strong,.cartTotal,#cartAgeNote,
+#cartMessage,#cartMagazine p,#cartMagazine strong,#cartPhoto p,#cartPhoto strong,
+#magazine-launch-status,#status,footer{color:#444!important}
+.langs{background:rgba(255,255,255,.97)!important;border-color:#ddd!important;box-shadow:0 3px 16px #0000000d}
+.langs button{background:transparent!important;color:#555!important}
+.langs button.on,.langs button[aria-pressed=true]{background:#171717!important;color:#fff!important}
+.pill,.contactNumber,.outline{background:#fff!important;color:#171717!important;border-color:#ddd!important}
+.contactNumber:hover,.outline:hover{background:#f5f5f5!important;border-color:#171717!important}
+.btn.wa,.sticky,.instagramHighlight,.photoMiniCta,.visualReserve,.magazineSale button,
+.photoMagazineButton,#cartSubmit,#cartQuote button,#send,#ageGate #ageEnter{
+ background:#171717!important;color:#fff!important;border-color:#171717!important;
+ box-shadow:0 5px 18px #00000012!important
+}
+.btn.wa:hover,.sticky:hover,.instagramHighlight:hover,.visualReserve:hover,
+.magazineSale button:hover,.photoMagazineButton:hover,#send:hover,#cartSubmit:hover{background:#333!important}
+.person,.step,.priceItem,.booking,.quickBuy,.visualHero,.visualCards button,
+.visualDurations button,.visualTravel,.photoMagazine,.magazinePresale,.magazineListFeatured button,
+.cartRowMagazine,.photoOption:has(input:checked){
+ background:#f5f5f5!important;color:#171717!important;border-color:#ddd!important
+}
+.booking,.photoMagazine,.magazinePresale{box-shadow:0 8px 28px #00000008!important}
+.photoMagazineContent h2,.magazinePresale h2,.visualHero p,.visualTravel button,
+.visualCards b,.magazineListFeatured button,.cartRowMagazine{color:#171717!important}
+.visualCards button:first-child,.magazineListFeatured button,.cartRowMagazine{border-color:#171717!important}
+.visualTravel button{background:#fff!important;border-color:#ddd!important}
+.visualTravel button:hover,.visualDurations button:hover{background:#eaeaea!important;border-color:#171717!important}
+.quickBuyGrid button{background:#fff!important;color:#171717!important;border-color:#ddd!important}
+.quickBuyGrid button.quickRecommended{border-color:#171717!important;background:#f5f5f5!important;box-shadow:0 0 0 2px #17171710!important}
+.quickBuyGrid em,.quickRecommendedLabel{background:#171717!important;color:#fff!important}
+.photoMagazineRule{background:#171717!important}
+.photoMagazineStamp,.photoMagazineStamp span{color:#fff!important}
+.photoFeaturedOffers a{background:#fff!important;color:#171717!important;border-color:#ddd!important}
+.photoFeaturedOffers span{color:#171717!important}
+.photoFeaturedOffers a:hover,.photoFeaturedOffers a:focus{background:#eaeaea!important;border-color:#171717!important}
+.magazineSale{border-color:#ddd!important}
+.magazinePresale .magazineNotice,#cartMagazine section,#cartPhoto section{background:#fff!important;border-color:#ddd!important;color:#444!important}
+.magCover{background:#fff!important;color:#171717!important;border-color:#ddd!important;box-shadow:0 12px 32px #00000012!important}
+.magCoverMasthead{background:#fff!important;color:#171717!important}
+.magCoverMasthead small,.magCoverMasthead em,.magCoverMasthead strong{color:#171717!important}
+.magCoverPhoto{background:#171717!important}
+.magCoverPhotoShade{background:linear-gradient(transparent,rgba(0,0,0,.6) 60%,#000 100%)!important}
+.magCoverCopy span,.magCoverCopy h3,.magCoverCopy p,.magCoverTeasers span{color:#fff!important}
+.magCoverTeasers{border-color:#ffffff66!important}
+.magCoverBottom{background:#f5f5f5!important;color:#171717!important;border-color:#ddd!important}
+.magCoverBottom strong{color:#171717!important}
+.cartField input,.cartField select,.cartField textarea,.cartSelect select,
+#cartPicker.magazinePickerSelected,#cartPicker option[value=magazine_presale],
+#ageGate select,#lussanLanguageSelector{
+ background:#fff!important;color:#171717!important;border-color:#ccc!important
+}
+.cartField input::placeholder,.cartField textarea::placeholder{color:#6b6b6b!important;opacity:1}
+input[type=checkbox],input[type=radio]{accent-color:#171717!important}
+.cartRow button,.cartRowMagazine button,#cartQuickDates button{background:#fff!important;color:#171717!important;border-color:#ccc!important;outline-color:#171717!important}
+.cartRow button:hover,.cartRowMagazine button:hover,#cartQuickDates button:hover{background:#eaeaea!important}
+#ageGate{background:#fff!important}
+#ageGate .ageCard{background:#f5f5f5!important;color:#171717!important;border-color:#ddd!important;box-shadow:0 10px 35px #0000000d}
+#ageGate #ageLeave{background:#fff!important;color:#171717!important;border-color:#ccc!important}
+.box{background:#f5f5f5!important;border-color:#ddd!important}
+.box p,.box small,body>small{color:#444!important}
+body>a,body>p>a{color:#171717!important}
+:focus-visible{outline:3px solid #666!important;outline-offset:3px}
