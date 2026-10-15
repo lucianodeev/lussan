@@ -182,4 +182,5 @@ app.get('/api/payment-status',async(req,res)=>{
  }catch(e){console.error('payment status error',e.code||'unknown');return res.status(503).json({verified:false})}
 });
 require('./verification-admin')(app,pool);
+require('./private-admin')(app,pool);
 app.listen(process.env.PORT||3000,()=>console.log('Lussan booking API listening'));
