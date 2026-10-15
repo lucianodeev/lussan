@@ -8,7 +8,8 @@ function isAdult(value,today=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/B
 }
 function magazineError(body){
  if(!isAdult(body?.birthDate)||body?.adultDeclaration!==true)return 'adult_declaration_required';
- // No trusted verifier or private delivery configured. Fail closed; do not charge.
- return 'age_verification_unavailable';
+ // Eligibility declaration only; private documents still require manual approval before delivery.
+ return null;
 }
 module.exports={isAdult,magazineError};
+

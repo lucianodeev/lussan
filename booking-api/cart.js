@@ -30,7 +30,7 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
    client=await pool.connect();await client.query('BEGIN');
    const r=await client.query('SELECT * FROM lussan_booking.cart_orders WHERE id=$1 FOR UPDATE',[id]);const order=r.rows[0];
    if(!order||!['approved','pending'].includes(order.status)||new Date(order.valid_until)<=new Date())throw Error('quote_unavailable');
-   if(order.payload?.skus?.includes('magazine_presale')){await client.query('ROLLBACK');return res.status(403).json({error:'age_verification_unavailable'})}
+   if(order.payload?.skus?.some(s=>/^(photos_|magazine_)/.test(s))&&!require('./verification-files').configured()){await client.query('ROLLBACK');return res.status(503).json({error:'verification_not_configured'})}
    if(order.stripe_checkout_session_id){session=await stripe.checkout.sessions.retrieve(order.stripe_checkout_session_id);if(session.status!=='open')throw Error('checkout_unavailable');await client.query('COMMIT');return res.json({url:session.url})}
    const data=order.payload,cart=buildCart(data.skus,services,false,data.pricingVersion===2&&data.location==='travel');
    if(cart.travel&&(!Number.isFinite(data.confirmedDistanceKm)||data.confirmedDistanceKm<0||data.confirmedDistanceKm>100))throw Error('invalid_quote');
@@ -56,10 +56,10 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
   }catch(e){if(client)await client.query('ROLLBACK');if(created&&session?.id)try{await stripe.checkout.sessions.expire(session.id)}catch{};console.error('cart checkout:',e.code||e.message);return res.status(['slot_unavailable','invalid_schedule','quote_unavailable','checkout_unavailable','invalid_quote'].includes(e.message)?409:503).json({error:['slot_unavailable','invalid_schedule','quote_unavailable'].includes(e.message)?e.message:'checkout_unavailable'})}finally{client?.release()}
  }
  app.post('/api/cart',secure,async(req,res)=>{
-  if(Array.isArray(req.body?.skus)&&req.body.skus.includes('magazine_presale'))return res.status(403).json({error:magazineError(req.body)});
+  if(Array.isArray(req.body?.skus)&&req.body.skus.includes('magazine_presale')&&magazineError(req.body))return res.status(403).json({error:magazineError(req.body)});
   if(!paymentReady())return res.status(503).json({error:'checkout_not_configured'});
   let cart;try{cart=buildCart(req.body?.skus,services,false,req.body?.location==='travel')}catch(e){return res.status(400).json({error:e.message})}
-  // Pre-sale remains payment-locked until eligibility and private fulfillment are ready.
+  // Digital fulfillment remains locked until documents have been manually approved.
   const b=req.body||{},name=clean(b.name,100),contact=clean(b.contact,100),details=clean(b.details,1000),location=b.location||'onsite';
   if(name.length<2||!phone(contact)||!['onsite','local','travel'].includes(location)||typeof b.details==='string'&&b.details.length>1000)return res.status(400).json({error:'invalid_contact'});
   if(cart.physicalMinutes>720)return res.status(400).json({error:'invalid_schedule'});
@@ -91,7 +91,7 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
  });
  app.get('/api/cart-quotes/:token',secure,async(req,res)=>{
   if(!/^[a-f0-9]{64}$/.test(req.params.token))return res.sendStatus(404);
-  try{const r=await pool.query('SELECT status,amount_cents,cost_items,payload,valid_until FROM lussan_booking.cart_orders WHERE quote_token=$1',[req.params.token]);const o=r.rows[0];if(!o)return res.sendStatus(404);return res.json({status:o.status,total:o.amount_cents,items:buildCart(o.payload.skus,services,true,o.payload.pricingVersion===2&&o.payload.location==='travel').items,costs:o.cost_items,date:o.payload.date,time:o.payload.time,location:o.payload.location,validUntil:o.valid_until,canPay:!o.payload.skus.includes('magazine_presale')&&['approved','pending'].includes(o.status)&&new Date(o.valid_until)>new Date()})}catch(e){return res.sendStatus(503)}
+  try{const r=await pool.query('SELECT status,amount_cents,cost_items,payload,valid_until FROM lussan_booking.cart_orders WHERE quote_token=$1',[req.params.token]);const o=r.rows[0];if(!o)return res.sendStatus(404);return res.json({status:o.status,total:o.amount_cents,items:buildCart(o.payload.skus,services,true,o.payload.pricingVersion===2&&o.payload.location==='travel').items,costs:o.cost_items,date:o.payload.date,time:o.payload.time,location:o.payload.location,validUntil:o.valid_until,canPay:['approved','pending'].includes(o.status)&&new Date(o.valid_until)>new Date()})}catch(e){return res.sendStatus(503)}
  });
  app.post('/api/cart-quote-checkout',secure,async(req,res)=>{
   if(!paymentReady()||!/^[a-f0-9]{64}$/.test(req.body?.token||''))return res.sendStatus(400);
@@ -101,7 +101,7 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
   const s=event.data.object;if(s.metadata?.project!=='lussan'||s.metadata?.order_type!=='cart')return false;
   if(['checkout.session.completed','checkout.session.async_payment_succeeded'].includes(event.type)&&s.payment_status==='paid'){
    if(s.livemode!==liveEnabled||s.currency!=='eur'){res.sendStatus(400);return true}
-   let c;try{c=await pool.connect();await c.query('BEGIN');const r=await c.query("UPDATE lussan_booking.cart_orders SET status='confirmed',paid_at=COALESCE(paid_at,now()) WHERE id=$1 AND stripe_checkout_session_id=$2 AND amount_cents=$3 AND status IN ('pending','confirmed') RETURNING appointment_id,payload",[s.client_reference_id,s.id,s.amount_total]);if(!r.rowCount){await c.query('ROLLBACK');res.sendStatus(409);return true}if(r.rows[0].payload?.skus?.includes('magazine_presale'))await c.query("INSERT INTO lussan_booking.magazine_verifications(cart_order_id,verification_status,delivery_status) VALUES($1,'awaiting_submission','not_released') ON CONFLICT (cart_order_id) DO NOTHING",[s.client_reference_id]);if(r.rows[0].appointment_id)await c.query("UPDATE lussan_booking.appointments SET status='confirmed',paid_at=COALESCE(paid_at,now()) WHERE id=$1 AND status IN ('pending','confirmed')",[r.rows[0].appointment_id]);await c.query('COMMIT')}catch(e){if(c)await c.query('ROLLBACK');res.sendStatus(503);return true}finally{c?.release()}
+   let c;try{c=await pool.connect();await c.query('BEGIN');const r=await c.query("UPDATE lussan_booking.cart_orders SET status='confirmed',paid_at=COALESCE(paid_at,now()) WHERE id=$1 AND stripe_checkout_session_id=$2 AND amount_cents=$3 AND status IN ('pending','confirmed') RETURNING appointment_id,payload",[s.client_reference_id,s.id,s.amount_total]);if(!r.rowCount){await c.query('ROLLBACK');res.sendStatus(409);return true}if(r.rows[0].payload?.skus?.includes('magazine_presale'))await c.query("INSERT INTO lussan_booking.magazine_verifications(cart_order_id,verification_status,delivery_status) VALUES($1,'awaiting_submission','not_released') ON CONFLICT (cart_order_id) DO NOTHING",[s.client_reference_id]);if(r.rows[0].payload?.skus?.some(s=>s.startsWith('photos_')))await c.query("INSERT INTO lussan_booking.photo_verifications(cart_order_id,verification_status) VALUES($1,'awaiting_submission') ON CONFLICT (cart_order_id) DO NOTHING",[s.client_reference_id]);if(r.rows[0].appointment_id)await c.query("UPDATE lussan_booking.appointments SET status='confirmed',paid_at=COALESCE(paid_at,now()) WHERE id=$1 AND status IN ('pending','confirmed')",[r.rows[0].appointment_id]);await c.query('COMMIT')}catch(e){if(c)await c.query('ROLLBACK');res.sendStatus(503);return true}finally{c?.release()}
   }
   if(['checkout.session.expired','checkout.session.async_payment_failed'].includes(event.type)){
    let c;try{c=await pool.connect();await c.query('BEGIN');const r=await c.query("UPDATE lussan_booking.cart_orders SET status='cancelled' WHERE stripe_checkout_session_id=$1 AND status='pending' RETURNING appointment_id",[s.id]);if(r.rows[0]?.appointment_id)await c.query("UPDATE lussan_booking.appointments SET status='cancelled' WHERE id=$1 AND status='pending'",[r.rows[0].appointment_id]);await c.query('COMMIT')}catch(e){if(c)await c.query('ROLLBACK');res.sendStatus(503);return true}finally{c?.release()}
@@ -112,8 +112,9 @@ function initialize({app,pool,stripe,paymentReady,liveEnabled,services}){
   if(session.metadata?.project!=='lussan'||session.metadata?.order_type!=='cart')return false;
   const r=await pool.query('SELECT * FROM lussan_booking.cart_orders WHERE id=$1 AND stripe_checkout_session_id=$2',[session.client_reference_id,session.id]);const o=r.rows[0];if(!o){res.status(404).json({verified:false});return true}
   const verified=o.status==='confirmed'&&session.currency==='eur'&&o.amount_cents===session.amount_total;
-  res.json({kind:'cart',status:o.status,verified,...(verified?{items:buildCart(o.payload.skus,services,true,o.payload.pricingVersion===2&&o.payload.location==='travel').items,costs:o.cost_items,contact:o.payload.contact,details:o.payload.details,date:o.payload.date,time:o.payload.time,location:o.payload.location,address:o.payload.address,photoMethod:o.payload.photoMethod,photoContact:o.payload.photoContact,deliveryDueAt:o.paid_at?new Date(new Date(o.paid_at).getTime()+3*86400000).toISOString():null}:{})});return true;
+  res.json({kind:'cart',status:o.status,verified,...(verified?{items:buildCart(o.payload.skus,services,true,o.payload.pricingVersion===2&&o.payload.location==='travel').items,costs:o.cost_items,contact:o.payload.contact,details:o.payload.details,date:o.payload.date,time:o.payload.time,location:o.payload.location,address:o.payload.address,photoMethod:o.payload.photoMethod,photoContact:o.payload.photoContact,...(o.payload.skus.some(s=>/^(photos_|magazine_)/.test(s))?{verificationUrl:'https://lussan.onrender.com/verificacao.html#token='+o.quote_token}:{}),deliveryDueAt:o.paid_at?new Date(new Date(o.paid_at).getTime()+3*86400000).toISOString():null}:{})});return true;
  }
  return {webhook,status};
 }
 module.exports={initialize,buildCart};
+

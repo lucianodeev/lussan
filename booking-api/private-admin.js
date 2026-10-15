@@ -102,9 +102,11 @@ module.exports=function(app,pool){
  const requireAdmin=async(req,res,next)=>{
   try{const c=await credential();if(!ready(c))return res.status(503).json({error:'setup_required'});if(!validate(req,c.session_version))return res.status(401).json({error:'unauthorized'});next()}catch{res.status(503).json({error:'authentication_unavailable'})}
  };
+ require('./verification-files').registerAdmin(app,pool,requireAdmin);
  app.get('/api/private-admin/me',requireAdmin,(_req,res)=>res.json({authorized:true}));
  app.get('/api/private-admin/queue',requireAdmin,async(_req,res)=>{
   if(!pool)return res.status(503).json({error:'database_unavailable'});
-  try{const q=await pool.query(`SELECT id,cart_order_id,verification_status,created_at,'photos' AS product FROM lussan_booking.photo_verifications UNION ALL SELECT id,cart_order_id,verification_status,created_at,'magazine' AS product FROM lussan_booking.magazine_verifications ORDER BY created_at DESC LIMIT 100`);res.json({requests:q.rows})}catch(e){console.error('private admin queue',e.code||'unavailable');res.status(503).json({error:'queue_unavailable'})}
+  try{const q=await pool.query(`SELECT v.*,o.payload->>'name' AS buyer_name,o.payload->>'contact' AS contact,o.payload->>'photoMethod' AS photo_method,o.payload->>'photoContact' AS photo_contact,o.payload->>'magazineEmail' AS magazine_email,(u.document_cipher IS NOT NULL AND u.expires_at>now()) AS has_files FROM (SELECT id,cart_order_id,verification_status,created_at,'photos' AS product FROM lussan_booking.photo_verifications UNION ALL SELECT id,cart_order_id,verification_status,created_at,'magazine' AS product FROM lussan_booking.magazine_verifications) v JOIN lussan_booking.cart_orders o ON o.id=v.cart_order_id LEFT JOIN lussan_booking.verification_uploads u ON u.cart_order_id=v.cart_order_id ORDER BY v.created_at DESC LIMIT 100`);res.json({requests:q.rows})}catch(e){console.error('private admin queue',e.code||'unavailable');res.status(503).json({error:'queue_unavailable'})}
  });
 };
+

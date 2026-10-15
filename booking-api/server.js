@@ -53,6 +53,7 @@ app.use((req,res,next)=>{
  if(req.method==='OPTIONS')return res.sendStatus(origin==='https://lussan.onrender.com'?204:403);
  next();
 });
+app.use('/api/verification-upload',express.json({limit:'12mb'}));
 app.use(express.json({limit:'8kb'}));
 const pool=process.env.DATABASE_URL?new Pool(databaseConfig(process.env.DATABASE_URL)):null;
 const ZONE='Europe/Brussels';
@@ -182,5 +183,7 @@ app.get('/api/payment-status',async(req,res)=>{
  }catch(e){console.error('payment status error',e.code||'unknown');return res.status(503).json({verified:false})}
 });
 require('./verification-admin')(app,pool);
+require('./verification-files').registerPublic(app,pool);
 require('./private-admin')(app,pool);
 app.listen(process.env.PORT||3000,()=>console.log('Lussan booking API listening'));
+
