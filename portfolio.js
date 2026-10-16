@@ -1,6 +1,6 @@
 'use strict';
 (()=>{
-const keys=["navAbout","navDuo","navGallery","navContact","location","subtitle","meet","galleryButton","values","aboutK","aboutTitle","about1","about2","duoLink","duoK","duoTitle","duoNote","lussan","pedro","galleryK","galleryTitle","galleryNote","momentsK","momentsTitle","momentsCopy","contactK","contactTitle","contactCopy","footer","ageTitle","ageCopy","ageYes","ageNo","ageNote","neutralTitle","neutralCopy","massageNote","massageWa1","massageWa2"];
+const keys=["navAbout","navDuo","navGallery","navContact","location","subtitle","meet","galleryButton","values","aboutK","aboutTitle","about1","about2","duoLink","duoK","duoTitle","duoNote","lussan","pedro","galleryK","galleryTitle","galleryNote","contactK","contactTitle","contactCopy","footer","ageTitle","ageCopy","ageYes","ageNo","ageNote","neutralTitle","neutralCopy"];
 const words={
   "pt": [
     "Sobre nós",
@@ -25,9 +25,6 @@ const words={
     "O NOSSO ÁLBUM",
     "Em fotografias.",
     "Retratos, viagens\ne momentos nossos.",
-    "RELAXAMENTO & BEM-ESTAR",
-    "Massagem a quatro mãos.",
-    "Massagem de relaxamento com Lussan e Pedro. Uma pausa dedicada ao descanso e ao bem-estar, num ambiente tranquilo e com respeito pelo seu conforto.",
     "CONTINUE A CONVERSA",
     "Vamos manter contacto.",
     "Encontre-nos nas redes sociais ou envie uma mensagem pessoal.",
@@ -38,10 +35,7 @@ const words={
     "Sou menor de 18 anos",
     "Esta declaração não constitui uma verificação de idade.",
     "Acesso indisponível.",
-    "Este conteúdo está reservado a adultos. Pode fechar esta página.",
-    "Serviço de bem-estar não sexual. Consulte duração, disponibilidade e condições pelo WhatsApp.",
-    "Informações · WhatsApp 1",
-    "Informações · WhatsApp 2"
+    "Este conteúdo está reservado a adultos. Pode fechar esta página."
   ],
   "fr": [
     "À propos",
@@ -66,9 +60,6 @@ const words={
     "NOTRE ALBUM",
     "En photographies.",
     "Portraits, voyages\net moments partagés.",
-    "DÉTENTE & BIEN-ÊTRE",
-    "Massage à quatre mains.",
-    "Un massage de relaxation avec Lussan et Pedro. Une pause consacrée au repos et au bien-être, dans une ambiance calme et respectueuse de votre confort.",
     "POURSUIVONS LA CONVERSATION",
     "Restons en contact.",
     "Retrouvez-nous sur les réseaux sociaux ou envoyez un message personnel.",
@@ -79,10 +70,7 @@ const words={
     "J’ai moins de 18 ans",
     "Cette déclaration ne constitue pas une vérification de l’âge.",
     "Accès indisponible.",
-    "Ce contenu est réservé aux adultes. Vous pouvez fermer cette page.",
-    "Prestation de bien-être non sexuelle. Renseignez-vous sur la durée, les disponibilités et les conditions par WhatsApp.",
-    "Informations · WhatsApp 1",
-    "Informations · WhatsApp 2"
+    "Ce contenu est réservé aux adultes. Vous pouvez fermer cette page."
   ],
   "en": [
     "About us",
@@ -107,9 +95,6 @@ const words={
     "OUR ALBUM",
     "In photographs.",
     "Portraits, travels\nand moments together.",
-    "RELAXATION & WELLBEING",
-    "Four-hand massage.",
-    "A relaxation massage with Lussan and Pedro. A break dedicated to rest and wellbeing, in a calm setting that respects your comfort.",
     "KEEP THE CONVERSATION GOING",
     "Let’s stay in touch.",
     "Find us on social media or send a personal message.",
@@ -120,10 +105,7 @@ const words={
     "I am under 18",
     "This declaration does not constitute age verification.",
     "Access unavailable.",
-    "This content is reserved for adults. You may close this page.",
-    "A non-sexual wellbeing service. Ask about duration, availability and conditions on WhatsApp.",
-    "Information · WhatsApp 1",
-    "Information · WhatsApp 2"
+    "This content is reserved for adults. You may close this page."
   ],
   "nl": [
     "Over ons",
@@ -148,9 +130,6 @@ const words={
     "ONS ALBUM",
     "In foto’s.",
     "Portretten, reizen\nen momenten samen.",
-    "ONTSPANNING & WELZIJN",
-    "Vierhandenmassage.",
-    "Een ontspanningsmassage met Lussan en Pedro. Een rustmoment voor ontspanning en welzijn, in een rustige omgeving met respect voor jouw comfort.",
     "PRAAT VERDER MET ONS",
     "Laten we contact houden.",
     "Vind ons op sociale media of stuur een persoonlijk bericht.",
@@ -161,10 +140,7 @@ const words={
     "Ik ben jonger dan 18",
     "Deze verklaring is geen leeftijdsverificatie.",
     "Toegang niet beschikbaar.",
-    "Deze inhoud is alleen voor volwassenen. Je kunt deze pagina sluiten.",
-    "Een niet-seksuele welzijnsdienst. Vraag naar de duur, beschikbaarheid en voorwaarden via WhatsApp.",
-    "Informatie · WhatsApp 1",
-    "Informatie · WhatsApp 2"
+    "Deze inhoud is alleen voor volwassenen. Je kunt deze pagina sluiten."
   ],
   "es": [
     "Sobre nosotros",
@@ -189,9 +165,6 @@ const words={
     "NUESTRO ÁLBUM",
     "En fotografías.",
     "Retratos, viajes\ny momentos nuestros.",
-    "RELAJACIÓN & BIENESTAR",
-    "Masaje a cuatro manos.",
-    "Un masaje de relajación con Lussan y Pedro. Una pausa dedicada al descanso y al bienestar, en un ambiente tranquilo y con respeto por tu comodidad.",
     "SIGAMOS CONVERSANDO",
     "Mantengamos el contacto.",
     "Encuéntranos en redes sociales o envía un mensaje personal.",
@@ -202,16 +175,12 @@ const words={
     "Soy menor de 18 años",
     "Esta declaración no constituye una verificación de edad.",
     "Acceso no disponible.",
-    "Este contenido está reservado a adultos. Puedes cerrar esta página.",
-    "Servicio de bienestar no sexual. Consulta duración, disponibilidad y condiciones por WhatsApp.",
-    "Información · WhatsApp 1",
-    "Información · WhatsApp 2"
+    "Este contenido está reservado a adultos. Puedes cerrar esta página."
   ]
 };
-const massageMessages={"pt":"Olá, Lussan e Pedro! Gostaria de informações sobre a massagem de relaxamento a quatro mãos: duração, disponibilidade e condições.","fr":"Bonjour Lussan et Pedro ! Je souhaite des informations sur le massage de relaxation à quatre mains : durée, disponibilités et conditions.","en":"Hello Lussan and Pedro! I would like information about your four-hand relaxation massage: duration, availability and conditions.","nl":"Hallo Lussan en Pedro! Ik wil graag informatie over jullie vierhandenontspanningsmassage: duur, beschikbaarheid en voorwaarden.","es":"¡Hola, Lussan y Pedro! Quisiera información sobre el masaje de relajación a cuatro manos: duración, disponibilidad y condiciones."};
 const get=(k)=>{try{return localStorage.getItem(k)}catch{return null}}, save=(k,v)=>{try{localStorage.setItem(k,v)}catch{}};
 const gate=document.getElementById('ageGate'),site=document.getElementById('siteContent'),neutral=document.getElementById('neutralPage');
-function translate(lang){if(!words[lang])lang='pt';document.documentElement.lang=lang;document.querySelectorAll('[data-t]').forEach(el=>{el.textContent=words[lang][keys.indexOf(el.dataset.t)]});document.querySelectorAll('#ageLanguage,#siteLanguage').forEach(el=>el.value=lang);document.title='Lussan & Pedro | '+words[lang][4].split(' · ')[0];document.querySelector('meta[name="description"]').content=words[lang][11];document.querySelectorAll('.person img').forEach(el=>el.alt=el.closest('article').querySelector('h3').textContent);const labels={pt:['Lussan e Pedro juntos','Fotografia do portfólio','Menu','Contactos rápidos'],fr:['Lussan et Pedro ensemble','Photo du portfolio','Menu','Contacts rapides'],en:['Lussan and Pedro together','Portfolio photograph','Menu','Quick contacts'],nl:['Lussan en Pedro samen','Portfoliofoto','Menu','Snel contact'],es:['Lussan y Pedro juntos','Fotografía del portfolio','Menú','Contactos rápidos']}[lang];document.querySelector('.hero-portrait img').alt=labels[0];document.querySelectorAll('.gallery img').forEach((el,i)=>el.alt=labels[1]+' '+(i+1));document.querySelector('.desktop-nav').setAttribute('aria-label',labels[2]);document.querySelector('.floating-contacts').setAttribute('aria-label',labels[3]);const accessibility={pt:['Início','Escolher idioma'],fr:['Accueil','Choisir la langue'],en:['Home','Choose language'],nl:['Startpagina','Taal kiezen'],es:['Inicio','Elegir idioma']}[lang];document.querySelectorAll('.wordmark').forEach(a=>a.setAttribute('aria-label','Lussan & Pedro — '+accessibility[0]));document.querySelectorAll('#ageLanguage,#siteLanguage').forEach(e=>e.setAttribute('aria-label',accessibility[1]));const messages={pt:'Olá, Lussan e Pedro! Vi o vosso portfólio e gostaria de falar convosco.',fr:'Bonjour Lussan et Pedro ! J’ai découvert votre portfolio et j’aimerais échanger avec vous.',en:'Hello Lussan and Pedro! I saw your portfolio and would like to get in touch.',nl:'Hallo Lussan en Pedro! Ik heb jullie portfolio bekeken en wil graag contact opnemen.',es:'¡Hola, Lussan y Pedro! He visto vuestro portfolio y me gustaría hablar con vosotros.'};document.querySelectorAll('a[href*="wa.me/"]').forEach(a=>{const url=new URL(a.href);url.searchParams.set('text',a.dataset.whatsappTopic==='massage'?massageMessages[lang]:messages[lang]);a.href=url.toString()});save('lussanPortfolioLanguage',lang)}
+function translate(lang){if(!words[lang])lang='pt';document.documentElement.lang=lang;document.querySelectorAll('[data-t]').forEach(el=>{el.textContent=words[lang][keys.indexOf(el.dataset.t)]});document.querySelectorAll('#ageLanguage,#siteLanguage').forEach(el=>el.value=lang);document.title='Lussan & Pedro | '+words[lang][4].split(' · ')[0];document.querySelector('meta[name="description"]').content=words[lang][11];document.querySelectorAll('.person img').forEach(el=>el.alt=el.closest('article').querySelector('h3').textContent);const labels={pt:['Lussan e Pedro juntos','Fotografia do portfólio','Menu','Contactos rápidos'],fr:['Lussan et Pedro ensemble','Photo du portfolio','Menu','Contacts rapides'],en:['Lussan and Pedro together','Portfolio photograph','Menu','Quick contacts'],nl:['Lussan en Pedro samen','Portfoliofoto','Menu','Snel contact'],es:['Lussan y Pedro juntos','Fotografía del portfolio','Menú','Contactos rápidos']}[lang];document.querySelector('.hero-portrait img').alt=labels[0];document.querySelectorAll('.gallery img').forEach((el,i)=>el.alt=labels[1]+' '+(i+1));document.querySelector('.desktop-nav').setAttribute('aria-label',labels[2]);document.querySelector('.floating-contacts').setAttribute('aria-label',labels[3]);const accessibility={pt:['Início','Escolher idioma'],fr:['Accueil','Choisir la langue'],en:['Home','Choose language'],nl:['Startpagina','Taal kiezen'],es:['Inicio','Elegir idioma']}[lang];document.querySelectorAll('.wordmark').forEach(a=>a.setAttribute('aria-label','Lussan & Pedro — '+accessibility[0]));document.querySelectorAll('#ageLanguage,#siteLanguage').forEach(e=>e.setAttribute('aria-label',accessibility[1]));const messages={pt:'Olá, Lussan e Pedro! Vi o vosso portfólio e gostaria de falar convosco.',fr:'Bonjour Lussan et Pedro ! J’ai découvert votre portfolio et j’aimerais échanger avec vous.',en:'Hello Lussan and Pedro! I saw your portfolio and would like to get in touch.',nl:'Hallo Lussan en Pedro! Ik heb jullie portfolio bekeken en wil graag contact opnemen.',es:'¡Hola, Lussan y Pedro! He visto vuestro portfolio y me gustaría hablar con vosotros.'};document.querySelectorAll('a[href*="wa.me/"]').forEach(a=>{const url=new URL(a.href);url.searchParams.set('text',messages[lang]);a.href=url.toString()});save('lussanPortfolioLanguage',lang)}
 document.querySelectorAll('#ageLanguage,#siteLanguage').forEach(el=>el.addEventListener('change',()=>translate(el.value)));
 function unlock(){gate.hidden=true;site.inert=false;site.removeAttribute('aria-hidden');document.documentElement.classList.remove('age-locked');document.querySelector('.hero h1').setAttribute('tabindex','-1');document.querySelector('.hero h1').focus({preventScroll:true})}
 function decline(){save('lussanAdultDeclaration','under18');site.inert=true;site.hidden=true;gate.hidden=true;neutral.hidden=false;document.body.classList.add('neutral');document.documentElement.classList.remove('age-locked');neutral.querySelector('h1').setAttribute('tabindex','-1');neutral.querySelector('h1').focus()}
